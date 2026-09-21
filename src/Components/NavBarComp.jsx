@@ -4,6 +4,7 @@ import Form from "react-bootstrap/Form";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
 import NavDropdown from "react-bootstrap/NavDropdown";
+import CartDrawer from "./CartDrawer";
 import Logo from "../assets/imgs/Alibaba_Logo.png";
 import {
   UserCircleIcon,
@@ -18,8 +19,7 @@ import DropdownItem from "react-bootstrap/esm/DropdownItem";
 import { useState } from "react";
 
 const NavBarComp = () => {
-  
-const [selectedLang, setSelectedLang] = useState("");
+  const [selectedLang, setSelectedLang] = useState("");
   return (
     <Navbar expand="lg" className="NAV flex-column">
       <Container
@@ -30,7 +30,7 @@ const [selectedLang, setSelectedLang] = useState("");
           <img
             src={Logo}
             alt="Logo"
-            style={{ width: "100px", height: "auto", overflow: "hidden" }}
+            style={{ width: "86px", height: "62px", overflow: "hidden" }}
           />
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="navbarScroll" />
@@ -105,8 +105,7 @@ const [selectedLang, setSelectedLang] = useState("");
             </Nav.Link>
             <Nav.Link href="#action1">
               <div className="d-flex align-items-center flex-column">
-                <HugeiconsIcon icon={ShoppingCart02Icon} />
-                <span className="font12">My Cart</span>
+                <CartDrawer></CartDrawer>
               </div>
             </Nav.Link>
           </Nav>
@@ -195,7 +194,10 @@ const [selectedLang, setSelectedLang] = useState("");
             </Navbar>
           </div>
           <div className="rightSideNavUnder ">
-            <NavDropdown title={selectedLang || "Language"} id="basic-nav-dropdown">
+            <NavDropdown
+              title={selectedLang || "Language"}
+              id="basic-nav-dropdown"
+            >
               <NavDropdown.Item
                 style={{
                   color: "#1c1c1c",
@@ -233,7 +235,6 @@ const [selectedLang, setSelectedLang] = useState("");
           </div>
         </div>
       </Container>
-
     </Navbar>
   );
 };

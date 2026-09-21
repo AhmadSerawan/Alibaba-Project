@@ -994,3 +994,10 @@ li {
 .bg-grey{
   background-color: #DEE2E7;
 }
+.Cart .abs{
+      top: 42px;
+    bottom: 0;
+    right: 9px;
+    width: fit-content;
+    height: fit-content;
+}

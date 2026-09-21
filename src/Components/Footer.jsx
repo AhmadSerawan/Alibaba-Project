@@ -13,11 +13,11 @@ const Footer = () => {
       <div className="bg-white">
         <Container>
           <div className="innerWrap d-flex aling-items-center justify-content-between mt-5">
-            <div className="firstCol d-flex flex-column ">
+            <div className="firstCol d-flex flex-column gap10">
               <img
                 src={Logo}
                 alt="Logo"
-                style={{ width: "100px", height: "100px", overflow: "hidden" }}
+                style={{ width: "92px", height: "66px", overflow: "hidden" }}
               />
               <div className="text1 weight400 font16 width56 natural-grey">
                 Best information about the company gies here but now lorem ipsum
@@ -25,7 +25,7 @@ const Footer = () => {
               </div>
               <div className="socialmedia">
                 <div
-                  class="icons7 d-flex justify-content-between mt-3"
+                  class="icons7 d-flex justify-content-between mt-1 mb-5"
                   style={{ width: "200px" }}
                 >
                   <a href="#">
