@@ -1,8 +1,10 @@
 
 
-const ProductCat = () => {
+const ProductCat = (children) => {
 	return (
-		<div>ProductCat</div>
+		<div>
+            {children}
+        </div>
 	)
 }
 
