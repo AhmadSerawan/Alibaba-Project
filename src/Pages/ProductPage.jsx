@@ -621,7 +621,7 @@ const ProductPage = () => {
                       </div>
                       <div className="PcsQoute">
                         <select name="" id="" className="form-select">
-                          <option selected className="form-option">
+                          <option value="Pcs" className="form-option">
                             Pcs
                           </option>
                           <option value="" className=""></option>

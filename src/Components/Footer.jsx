@@ -25,23 +25,23 @@ const Footer = () => {
               </div>
               <div className="socialmedia">
                 <div
-                  class="icons7 d-flex justify-content-between mt-1 mb-5"
+                  className="icons7 d-flex justify-content-between mt-1 mb-5"
                   style={{ width: "200px" }}
                 >
                   <a href="#">
-                    <i class="bi bi-facebook natural-grey "></i>
+                    <i className="bi bi-facebook natural-grey "></i>
                   </a>
                   <a href="#">
-                    <i class="bi bi-twitter natural-grey"></i>
+                    <i className="bi bi-twitter natural-grey"></i>
                   </a>
                   <a href="#">
-                    <i class="bi bi-linkedin natural-grey"></i>
+                    <i className="bi bi-linkedin natural-grey"></i>
                   </a>
                   <a href="#">
-                    <i class="bi bi-instagram natural-grey"></i>
+                    <i className="bi bi-instagram natural-grey"></i>
                   </a>
                   <a href="#">
-                    <i class="bi bi-youtube natural-grey "></i>
+                    <i className="bi bi-youtube natural-grey "></i>
                   </a>
                 </div>
               </div>
