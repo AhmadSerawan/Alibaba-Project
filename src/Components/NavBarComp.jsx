@@ -10,12 +10,9 @@ import {
   UserCircleIcon,
   MessageSquareMoreIcon,
   InLoveIcon,
-  ShoppingCart02Icon,
   Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Dropdown } from "bootstrap";
-import DropdownItem from "react-bootstrap/esm/DropdownItem";
 import { useState } from "react";
 
 const NavBarComp = () => {

@@ -40,6 +40,12 @@ li {
 .gap127_5 {
   gap: 127.5px;
 }
+.gap4 {
+  gap: 4px;
+}
+.gap7 {
+  gap: 7px;
+}
 .gap10 {
   gap: 10px;
 }
@@ -387,8 +393,8 @@ li {
 .width56 {
   width: 56%;
 }
-.width56 {
-  width: 56%;
+.width65 {
+  width: 65%;
 }
 .width24 {
   width: 24%;
@@ -548,6 +554,8 @@ li {
 }
 .navbtton {
   background-color: #ffffff00;
+  
+    padding-left: 0;
   border: none;
   color: #1c1c1c;
   font-family: "Inter", sans-serif;
@@ -1012,4 +1020,30 @@ li {
   margin-top: 10px;
   border-radius: 5px;
   border: 1px #00000017 solid;
+}
+.bg-alibabaBack{
+background-color: #f7fafc;
+}
+.DeleteLastOne{
+  .flex-container > *:last-child {
+    display: none;
+}
+}
+.CartNumSt {
+  background-color: #dd4365;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s ease-in-out;
+  color: white;
+}
+
+.CartNumSt:hover {
+   background-color: #fff;
+   color: #000;
 }

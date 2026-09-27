@@ -4,7 +4,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 const SubscribeSectino = () => {
   return (
     <>
-      <div className="SubscribeSection mt-3 align-items-center d-flex flex-column py-5 ">
+      <div className="SubscribeSection  align-items-center d-flex flex-column py-5 ">
         <div className="SubText1 font20 weight600">
           Subscribe on our newsletter
         </div>
