@@ -66,7 +66,6 @@ export default function ProductInfoRecomm() {
     return (
         <Container className="my-4">
             <Row className="g-4">
-                {/* LEFT COLUMN: Description / Specs & Reviews */}
                 <Col lg={8} md={12}>
                     <Card className="border shadow-sm bg-white p-4" style={{ borderRadius: '8px', borderColor: '#e5e7eb' }}>
                         
