@@ -1,140 +1,206 @@
+// Components/CardProductList.jsx
 import { useState } from 'react';
-import { Card, Row, Col, Button } from 'react-bootstrap';
+import { Card, Button, Row, Col } from 'react-bootstrap';
 import { Heart, HeartFill, StarFill, CartPlus, CheckLg } from 'react-bootstrap-icons';
-
 import Phonee from '../assets/imgs/Phonee.png';
 import { useCart } from '../Contexts/CartContext';
+import { useNavigate } from "react-router";
 
-/**
- * CardProductList (Horizontal list version)
- * Integrated with useCart context to dispatch item to cart.
- */
-export default function CardProductList() {
+export default function CardProductList({ product }) {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [added, setAdded] = useState(false);
-  const { handleMoveToCart } = useCart();
+  const navigate = useNavigate();
+  // Safely extract cart handler from context (fallback if context unavailable)
+  const cartContext = useCart ? useCart() : {};
+  const handleMoveToCart = cartContext?.handleMoveToCart || cartContext?.addToCart || (() => { });
 
+  // Fallback data normalization
   const productData = {
-    id: 'canon-eos-2000d',
-    title: 'Canon Camera EOS 2000, Black 10x zoom',
-    price: 998.00,
-    numericPrice: 998.00,
-    originalPrice: 1128.00,
-    img: Phonee,
-    image: Phonee,
+    id: product?.id || 99,
+    title: product?.title || product?.name || "GoPro HERO6 4K Action Camera - Black",
+    price: typeof product?.price === 'number' ? product.price : parseFloat(product?.price) || 99.50,
+    originalPrice: product?.originalPrice ? (typeof product.originalPrice === 'number' ? product.originalPrice : parseFloat(product.originalPrice)) : null,
+    img: product?.image || product?.img || Phonee,
+    rating: product?.rating || 4.5,
+    ordersCount: product?.ordersCount || 120,
+    description: product?.description || "High performance product with advanced features and premium durability.",
+    categoryName: product?.categoryName || product?.category?.name || null
   };
 
   const handleAddToCart = () => {
-    // Add item to global cart context
-    handleMoveToCart(productData);
+    handleMoveToCart({
+      id: productData.id,
+      title: productData.title,
+      price: productData.price,
+      numericPrice: productData.price,
+      image: productData.img,
+      quantity: 1,
+    });
 
-    // Show temporary visual confirmation
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
 
   return (
-    <Card className="border-0 shadow-sm position-relative mt-3" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-      <Card.Body className="p-3">
-        <Row className="g-3 align-items-center">
-          {/* Image */}
-          <Col xs="auto" className="text-center">
-            <img
-              src={productData.img}
-              alt={productData.title}
-              style={{ width: 120, height: 120, objectFit: 'contain' }}
-            />
-          </Col>
+    <Card
+      className="border-0 shadow-sm position-relative mb-3 w-100"
+      style={{
+        borderRadius: '16px',
+        overflow: 'hidden',
+        backgroundColor: '#fff',
+        transition: 'all 0.25s ease-in-out'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '';
+      }}
+    >
+      <Row className="g-0 align-items-center">
+        {/* Left Column: Image Container */}
+        <Col md={3} className="position-relative bg-light bg-opacity-50 text-center p-3 d-flex align-items-center justify-content-center" style={{ minHeight: '180px' }}>
+          {/* Discount Badge */}
+          <span
+            className="badge bg-danger position-absolute top-0 start-0 m-2 px-2 py-1"
+            style={{ fontSize: '0.75rem', fontWeight: '600', borderRadius: '6px', zIndex: 1 }}
+          >
+            -15%
+          </span>
 
-          {/* Details */}
-          <Col>
-            <div className="fw-semibold mb-1 me-5">{productData.title}</div>
+          <img
+            src={productData.img}
+            alt={productData.title}
+            className="img-fluid"
+            onClick={() => navigate(`/product/${product.id}`)}
 
-            <div className="d-flex align-items-baseline gap-2 mb-1">
-              <span className="fw-bold fs-5">${productData.price.toFixed(2)}</span>
-              <span className="text-muted text-decoration-line-through">${productData.originalPrice.toFixed(2)}</span>
-            </div>
+            style={{ maxHeight: '140px', objectFit: 'contain' }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = Phonee;
+            }}
+          />
+        </Col>
 
-            <div className="d-flex align-items-center gap-2 mb-2 small flex-wrap">
-              <span className="text-warning d-inline-flex gap-1">
-                <StarFill size={12} />
-                <StarFill size={12} />
-                <StarFill size={12} />
-                <StarFill size={12} />
+        {/* Middle Column: Details & Description */}
+        <Col md={6} className="p-3">
+          {productData.categoryName && (
+            <span className="badge bg-secondary bg-opacity-10 text-secondary mb-2 px-2 py-1" style={{ fontSize: '0.75rem' }}>
+              {productData.categoryName}
+            </span>
+          )}
+
+          <h5
+            className="fw-semibold text-dark mb-2"
+            style={{
+              fontSize: '1rem',
+              lineHeight: '1.4',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}
+          >
+            {productData.title}
+          </h5>
+
+          {/* Rating */}
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <div className="text-warning d-flex align-items-center gap-1">
+              <StarFill size={13} />
+              <span className="text-dark fw-bold ms-1" style={{ fontSize: '0.85rem' }}>
+                {productData.rating}
               </span>
-              <span className="text-warning fw-semibold">7.5</span>
-              <span className="text-muted">•</span>
-              <span className="text-muted">154 orders</span>
-              <span className="text-muted">•</span>
-              <span className="text-success">Free Shipping</span>
             </div>
+            <span className="text-muted small" style={{ fontSize: '0.8rem' }}>
+              ({productData.ordersCount} orders)
+            </span>
+            <span className="text-success fw-semibold ms-2" style={{ fontSize: '0.8rem' }}>
+              In Stock
+            </span>
+          </div>
 
-            <p className="text-muted small mb-3 text-truncate" style={{ maxWidth: '85%' }}>
-              Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
-              tempor incididunt ut labore et dolore magna aliqua.
-            </p>
+          {/* Description */}
+          <p
+            className="text-muted small mb-0"
+            style={{
+              fontSize: '0.85rem',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}
+          >
+            {productData.description}
+          </p>
+        </Col>
 
-            {/* Bottom Actions Row */}
-            <div className="d-flex align-items-center gap-3">
-              <Button
-                onClick={handleAddToCart}
-                variant={added ? 'success' : 'primary'}
-                className="d-inline-flex align-items-center gap-2 fw-medium btn-sm px-3 py-1-5"
-                style={{
-                  borderRadius: '8px',
-                  backgroundColor: added ? undefined : '#e91e8c',
-                  borderColor: added ? undefined : '#e91e8c',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {added ? (
-                  <>
-                    <CheckLg size={16} /> Added
-                  </>
-                ) : (
-                  <>
-                    <CartPlus size={16} /> Add to Cart
-                  </>
-                )}
-              </Button>
+        {/* Right Column: Pricing & Actions */}
+        <Col md={3} className="p-3 border-start border-light d-flex flex-column justify-content-between h-100">
+          {/* Wishlist Button */}
+          <div className="d-flex justify-content-end mb-2">
+            <button
+              type="button"
+              onClick={() => setIsWishlisted(!isWishlisted)}
+              className="btn rounded-circle p-0 d-flex align-items-center justify-content-center bg-white shadow-sm"
+              style={{
+                width: 34,
+                height: 34,
+                border: '1px solid #eee',
+                transition: 'transform 0.15s ease'
+              }}
+            >
+              {isWishlisted ? (
+                <HeartFill size={15} color="#e91e8c" />
+              ) : (
+                <Heart size={15} color="#6c757d" />
+              )}
+            </button>
+          </div>
 
-              <a href="#" className="text-decoration-none small" style={{ color: '#e91e8c' }}>
-                View details
-              </a>
+          {/* Price Display */}
+          <div className="mb-3">
+            <div className="d-flex align-items-baseline gap-2">
+              <span className="fw-bold fs-4 text-primary">
+                ${productData.price.toFixed(2)}
+              </span>
+              <span className="text-muted text-decoration-line-through small" style={{ fontSize: '0.85rem' }}>
+                ${(productData.originalPrice || productData.price * 1.2).toFixed(2)}
+              </span>
             </div>
-          </Col>
-        </Row>
-      </Card.Body>
+            <span className="text-success small fw-semibold" style={{ fontSize: '0.75rem' }}>
+              Free Shipping
+            </span>
+          </div>
 
-      {/* Wishlist button */}
-      <button
-        type="button"
-        onClick={() => setIsWishlisted(!isWishlisted)}
-        className="btn btn-white rounded-circle position-absolute d-flex align-items-center justify-content-center shadow-sm"
-        style={{
-          top: 16,
-          right: 16,
-          width: 38,
-          height: 38,
-          border: '1px solid #f0f0f0',
-          backgroundColor: '#fff',
-          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-        }}  
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.08)';
-          e.currentTarget.style.boxShadow = '0 4px 10px rgba(233, 30, 140, 0.25)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = '';
-        }}
-      >
-        {isWishlisted ? (
-          <HeartFill size={16} color="#e91e8c" />
-        ) : (
-          <Heart size={16} color="#e91e8c" />
-        )}
-      </button>
+          {/* Add to Cart Button */}
+          <Button
+            onClick={handleAddToCart}
+            variant={added ? "success" : "primary"}
+            className="w-100 d-flex align-items-center justify-content-center gap-2 fw-semibold"
+            style={{
+              borderRadius: '8px',
+              padding: '9px 0',
+              fontSize: '0.875rem',
+              transition: 'all 0.2s ease',
+              backgroundColor: added ? undefined : '#e91e8c',
+              borderColor: added ? undefined : '#e91e8c'
+            }}
+          >
+            {added ? (
+              <>
+                <CheckLg size={16} /> Added to Cart
+              </>
+            ) : (
+              <>
+                <CartPlus size={16} /> Add to Cart
+              </>
+            )}
+          </Button>
+        </Col>
+      </Row>
     </Card>
   );
 }

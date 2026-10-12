@@ -1,46 +1,51 @@
+// Components/CardProductGridAlt.jsx
 import { useState } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { Heart, HeartFill, StarFill, CartPlus, CheckLg } from 'react-bootstrap-icons';
 import Phonee from '../assets/imgs/Phonee.png';
 import { useCart } from '../Contexts/CartContext';
+import { useNavigate } from "react-router";
 
-/**
- * CardProductGridAlt (Alternative Grid Version)
- * Features a modern floating discount badge, cleaner border radius, 
- * interactive wishlist toggle, and integrated Add to Cart handler.
- */
-export default function CardProductGridAlt() {
+export default function CardProductGridAlt({ product }) {
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [added, setAdded] = useState(false);
-    const { handleMoveToCart } = useCart();
+    const navigate = useNavigate();
 
+    // Safely extract cart handler from context (supports multiple method names)
+    const cartContext = useCart ? useCart() : {};
+    const handleMoveToCart = cartContext?.handleMoveToCart || cartContext?.addToCart || (() => { });
+
+    // Fallback data normalization to prevent crashes
     const productData = {
-        id: 99, // Unique ID for this product
-        title: "GoPro HERO6 4K Action Camera - Black",
-        price: 99.50,
-        img: Phonee,
+        id: product?.id || 99,
+        title: product?.title || product?.name || "GoPro HERO6 4K Action Camera - Black",
+        price: typeof product?.price === 'number' ? product.price : parseFloat(product?.price) || 99.50,
+        originalPrice: product?.originalPrice ? (typeof product.originalPrice === 'number' ? product.originalPrice : parseFloat(product.originalPrice)) : null,
+        img: product?.image || product?.img || Phonee,
+        rating: product?.rating || 4.5,
+        ordersCount: product?.ordersCount || 120,
     };
 
     const handleAddToCart = () => {
-        // Formats object to match context structure
         handleMoveToCart({
             id: productData.id,
             title: productData.title,
+            price: productData.price,
             numericPrice: productData.price,
             image: productData.img,
+            quantity: 1,
         });
 
-        // Show brief visual confirmation on button click
         setAdded(true);
         setTimeout(() => setAdded(false), 1500);
     };
 
     return (
-        <Card 
-            className="border-0 shadow-sm position-relative mt-3 h-100" 
-            style={{ 
-                borderRadius: '16px', 
-                overflow: 'hidden', 
+        <Card
+            className="border-0 shadow-sm position-relative h-100"
+            style={{
+                borderRadius: '16px',
+                overflow: 'hidden',
                 backgroundColor: '#fff',
                 transition: 'all 0.25s ease-in-out'
             }}
@@ -53,15 +58,15 @@ export default function CardProductGridAlt() {
                 e.currentTarget.style.boxShadow = '';
             }}
         >
-            {/* Top Badge (e.g., Discount) */}
-            <div className="position-absolute top-0 start-0 m-3 z-1">
+            {/* Floating Discount Badge */}
+            <div className="position-absolute top-0 start-0 m-3" style={{ zIndex: 2 }}>
                 <span className="badge bg-danger px-2 py-1" style={{ fontSize: '0.75rem', fontWeight: '600', borderRadius: '6px' }}>
-                    -90%
+                    -15%
                 </span>
             </div>
 
             {/* Wishlist Button Top-Right */}
-            <div className="position-absolute top-0 end-0 m-3 z-1">
+            <div className="position-absolute top-0 end-0 m-3" style={{ zIndex: 2 }}>
                 <button
                     type="button"
                     onClick={() => setIsWishlisted(!isWishlisted)}
@@ -84,50 +89,57 @@ export default function CardProductGridAlt() {
             {/* Product Image Container */}
             <div className="text-center p-4 bg-light bg-opacity-50" style={{ height: '210px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img
+                    onClick={() => navigate(`/product/${product.id}`)}
+                    
                     src={productData.img}
                     alt={productData.title}
                     style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = Phonee;
+                    }}
                 />
             </div>
 
+            {/* Card Content Body */}
             <Card.Body className="p-3 d-flex flex-column justify-content-between">
                 <div>
-                    {/* Ratings & Reviews */}
+                    {/* Ratings & Stock */}
                     <div className="d-flex align-items-center justify-content-between mb-1">
                         <div className="text-warning d-flex align-items-center gap-1">
                             <StarFill size={12} />
-                            <span className="text-dark fw-bold ms-1" style={{ fontSize: '0.85rem' }}>4.5</span>
-                            <span className="text-muted small" style={{ fontSize: '0.75rem' }}>(120)</span>
+                            <span className="text-dark fw-bold ms-1" style={{ fontSize: '0.85rem' }}>{productData.rating}</span>
+                            <span className="text-muted small" style={{ fontSize: '0.75rem' }}>({productData.ordersCount})</span>
                         </div>
                         <span className="text-success fw-semibold" style={{ fontSize: '0.75rem' }}>In Stock</span>
                     </div>
 
                     {/* Title */}
-                    <div 
-                        className="fw-semibold text-dark mb-2" 
-                        style={{ 
-                            fontSize: '0.9rem', 
-                            lineHeight: '1.4', 
-                            display: '-webkit-box', 
-                            WebkitLineClamp: 2, 
-                            WebkitBoxOrient: 'vertical', 
-                            overflow: 'hidden' 
+                    <div
+                        className="fw-semibold text-dark mb-2"
+                        style={{
+                            fontSize: '0.9rem',
+                            lineHeight: '1.4',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            minHeight: '2.5em'
                         }}
                     >
                         {productData.title}
                     </div>
                 </div>
 
-                {/* Price & Add to Cart Section */}
+                {/* Pricing & Add to Cart */}
                 <div>
                     <div className="d-flex align-items-baseline gap-2 pt-2 border-top border-light mb-3">
                         <span className="fw-bold fs-5 text-primary">${productData.price.toFixed(2)}</span>
                         <span className="text-muted text-decoration-line-through small" style={{ fontSize: '0.85rem' }}>
-                            $1,128.00
+                            ${(productData.originalPrice || productData.price * 1.2).toFixed(2)}
                         </span>
                     </div>
 
-                    {/* Add to Cart Button */}
                     <Button
                         onClick={handleAddToCart}
                         variant={added ? "success" : "primary"}
@@ -136,7 +148,9 @@ export default function CardProductGridAlt() {
                             borderRadius: '8px',
                             padding: '8px 0',
                             fontSize: '0.875rem',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            backgroundColor: added ? undefined : '#e91e8c',
+                            borderColor: added ? undefined : '#e91e8c'
                         }}
                     >
                         {added ? (

@@ -27,7 +27,6 @@ const INITIAL_CART_ITEMS = [
   },
 ];
 
-// Helper to safely check if storage is available and accessible
 const safeLocalStorage = {
   getItem: (key) => {
     try {
@@ -35,7 +34,6 @@ const safeLocalStorage = {
         return window.localStorage.getItem(key);
       }
     } catch (e) {
-      // Storage access blocked by browser privacy policies
       return null;
     }
     return null;
@@ -46,13 +44,12 @@ const safeLocalStorage = {
         window.localStorage.setItem(key, value);
       }
     } catch (e) {
-      // Ignore write errors when storage is blocked
+      // Ignore storage errors
     }
   },
 };
 
 export const CartProvider = ({ children }) => {
-  // 1. Initialize state safely
   const [cartItems, setCartItems] = useState(() => {
     const savedCart = safeLocalStorage.getItem("cartItems");
     if (savedCart) {
@@ -77,7 +74,6 @@ export const CartProvider = ({ children }) => {
     return [];
   });
 
-  // 2. Sync state updates safely
   useEffect(() => {
     safeLocalStorage.setItem("cartItems", JSON.stringify(cartItems));
   }, [cartItems]);
@@ -86,7 +82,6 @@ export const CartProvider = ({ children }) => {
     safeLocalStorage.setItem("savedForLaterItems", JSON.stringify(savedItems));
   }, [savedItems]);
 
-  // Handlers
   const handleQtyChange = (id, newQty) => {
     if (newQty <= 0) {
       handleRemove(id);
@@ -124,21 +119,47 @@ export const CartProvider = ({ children }) => {
   };
 
   const handleSaveForLater = (item) => {
+    if (!item) return;
+
+    // Remove from active cart if it exists there
     handleRemove(item.id);
-    setSavedItems((prev) => [
-      ...prev,
-      {
-        id: item.id,
-        title: item.title,
-        price: `$${item.price.toFixed(2)}`,
-        numericPrice: item.price,
-        image: item.img,
-      },
-    ]);
+
+    // Safely derive numerical price value
+    const rawPrice = item.numericPrice ?? item.price;
+    const numPrice = typeof rawPrice === "number" 
+      ? rawPrice 
+      : parseFloat(String(rawPrice || 0).replace(/[^0-9.-]+/g, "")) || 0;
+
+    setSavedItems((prev) => {
+      const exists = prev.some((s) => s.id === item.id);
+      if (exists) return prev;
+
+      return [
+        ...prev,
+        {
+          id: item.id,
+          title: item.title,
+          price: `$${numPrice.toFixed(2)}`,
+          numericPrice: numPrice,
+          image: item.image || item.img,
+          img: item.img || item.image,
+        },
+      ];
+    });
   };
 
   const handleMoveToCart = (item) => {
+    if (!item) return;
+
+    // Remove from saved items list
     setSavedItems((prev) => prev.filter((s) => s.id !== item.id));
+
+    // Safely derive numerical price value
+    const rawPrice = item.numericPrice ?? item.price;
+    const numPrice = typeof rawPrice === "number" 
+      ? rawPrice 
+      : parseFloat(String(rawPrice || 0).replace(/[^0-9.-]+/g, "")) || 0;
+
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
@@ -151,13 +172,15 @@ export const CartProvider = ({ children }) => {
         {
           id: item.id,
           title: item.title,
-          size: "medium",
-          color: "blue",
-          material: "Cotton",
-          seller: "Artel Market",
-          price: item.numericPrice || 99.5,
+          size: item.size || "medium",
+          color: item.color || "blue",
+          material: item.material || "Cotton",
+          seller: item.seller || "Artel Market",
+          price: numPrice,
+          numericPrice: numPrice,
           qty: 1,
-          img: item.image,
+          img: item.img || item.image,
+          image: item.image || item.img,
         },
       ];
     });

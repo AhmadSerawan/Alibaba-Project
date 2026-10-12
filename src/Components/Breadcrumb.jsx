@@ -1,28 +1,60 @@
-import React from "react";
-import { Link } from "react-router";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 
-const Breadcrumb = ({ items }) => {
+export default function Breadcrumb({
+  activeCategory = "All",
+  onSelectCategory = () => {},
+}) {
+  const formattedCategory =
+    activeCategory === "All category" || activeCategory === ""
+      ? "All Products"
+      : activeCategory;
+
   return (
-    <nav aria-label="breadcrumb" className="d-flex align-items-center gap-2 font16 weight400 py-3" style={{color:"#8B96A5"}}>
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
-        return (
-          <React.Fragment key={item.path}>
-            {isLast ? (
-              // آخر عنصر: نص عادي، مو رابط
-              <span className="fw-medium">{item.label}</span>
-            ) : (
-              <Link to={item.path} className=" text-decoration-none" style={{color:"#8B96A5"}}>
-                {item.label}
-              </Link>
-            )}
-            {!isLast && <ChevronRight size={14} className="text-muted" />}
-          </React.Fragment>
-        );
-      })}
+    <nav
+      aria-label="breadcrumb"
+      className="py-3 px-2"
+      style={{ backgroundColor: "#f7f8f9" }}
+    >
+      <div className="d-flex align-items-center flex-wrap gap-2" style={{ fontSize: "14px" }}>
+        {/* Home */}
+        <span
+          onClick={() => onSelectCategory("All")}
+          style={{ cursor: "pointer", color: "#8b96a5" }}
+          className="hover-underline"
+        >
+          Home
+        </span>
+
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          size={14}
+          style={{ color: "#8b96a5" }}
+        />
+
+        {/* Clothings / Parent Category */}
+        <span
+          onClick={() => onSelectCategory("All")}
+          style={{ cursor: "pointer", color: "#8b96a5" }}
+          className="hover-underline"
+        >
+          Categories
+        </span>
+
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          size={14}
+          style={{ color: "#8b96a5" }}
+        />
+
+        {/* Dynamic Category Leaf */}
+        <span
+          className="text-capitalize"
+          style={{ color: "#8b96a5", fontWeight: "400" }}
+        >
+          {formattedCategory.replace("-", " ")}
+        </span>
+      </div>
     </nav>
   );
-};
-
-export default Breadcrumb;
+}

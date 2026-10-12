@@ -1,61 +1,84 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Card } from 'react-bootstrap';
-import { Check } from 'react-bootstrap-icons';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router';
+import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
+import { Check, StarFill, StarHalf } from 'react-bootstrap-icons';
 
-// Sample placeholder images for recommendations
-import Phonee from '../assets/imgs/Phonee.png';
-
-/**
- * ProductInfoRecomm Component
- * Replicates the e-commerce product description tabs and recommendation sidebar layout.
- */
 export default function ProductInfoRecomm() {
-    const [activeTab, setActiveTab] = useState('description');
+    const { productId } = useParams();
+    const navigate = useNavigate();
 
-    const recommendations = [
-        {
-            title: "Men Blazers Sets Elegant Formal",
-            price: "$7.00 - $99.50",
-            img: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=500&auto=format&fit=crop&q=60"
-        },
-        {
-            title: "Men Shirt Sleeve Polo Contrast",
-            price: "$7.00 - $99.50",
-            img: Phonee
-        },
-        {
-            title: "Apple Watch Series Space Gray",
-            price: "$7.00 - $99.50",
-            img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60"
-        },
-        {
-            title: "Basketball Crew Socks Long Stuff",
-            price: "$7.00 - $99.50",
-            img: "https://images.unsplash.com/photo-1586350977771-b3b0af50c8fd?w=500&auto=format&fit=crop&q=60"
-        },
-        {
-            title: "New Summer Men's castrol T-Shirts",
-            price: "$7.00 - $99.50",
-            img: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60"
+    const [activeTab, setActiveTab] = useState('description');
+    const [product, setProduct] = useState(null);
+    const [recommendations, setRecommendations] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchInfoAndRecommendations() {
+            setLoading(true);
+            try {
+                // 1. Fetch current product details
+                const res = await fetch(`https://dummyjson.com/products/${productId}`);
+                if (!res.ok) throw new Error("Failed to fetch product");
+                const data = await res.json();
+                setProduct(data);
+
+                // 2. Fetch category recommendations for "You may like"
+                if (data.category) {
+                    const recRes = await fetch(`https://dummyjson.com/products/category/${data.category}?limit=6`);
+                    if (recRes.ok) {
+                        const recData = await recRes.json();
+                        // Exclude the current active product
+                        setRecommendations(recData.products.filter((p) => p.id !== data.id));
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading product info/recommendations:", error);
+            } finally {
+                setLoading(false);
+            }
         }
+
+        if (productId) {
+            fetchInfoAndRecommendations();
+        }
+    }, [productId]);
+
+    if (loading) {
+        return (
+            <Container className="my-4 text-center py-4">
+                <Spinner animation="border" variant="primary" size="sm" />
+            </Container>
+        );
+    }
+
+    if (!product) return null;
+
+    // Dynamic specs array built from API data
+    const specifications = [
+        { label: 'Brand', value: product.brand || 'Generic' },
+        { label: 'Category', value: product.category },
+        { label: 'SKU', value: product.sku || 'N/A' },
+        { label: 'Weight', value: `${product.weight || 1} kg` },
+        { label: 'Dimensions', value: product.dimensions ? `${product.dimensions.width} x ${product.dimensions.height} x ${product.dimensions.depth} cm` : 'Standard' },
+        { label: 'Min Order Qty', value: `${product.minimumOrderQuantity || 1} pcs` }
     ];
 
     return (
         <Container className="my-4">
             <Row className="g-4">
-                {/* LEFT COLUMN: Description / Specs & Features */}
+                {/* LEFT COLUMN: Description / Specs & Reviews */}
                 <Col lg={8} md={12}>
                     <Card className="border shadow-sm bg-white p-4" style={{ borderRadius: '8px', borderColor: '#e5e7eb' }}>
                         
                         {/* Navigation Tabs */}
-                        <div className="d-flex border-bottom mb-4 gap-4" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="d-flex border-bottom mb-4 gap-4 overflow-auto" style={{ borderColor: '#e5e7eb' }}>
                             {['description', 'reviews', 'shipping', 'about seller'].map((tab) => {
                                 const isActive = activeTab === tab;
                                 return (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
-                                        className="btn btn-link text-decoration-none px-0 pb-3 position-of-relative text-capitalize fw-semibold"
+                                        className="btn btn-link text-decoration-none px-0 pb-3 text-capitalize fw-semibold flex-shrink-0"
                                         style={{
                                             color: isActive ? '#eb3b5b' : '#6c757d',
                                             fontSize: '1rem',
@@ -70,62 +93,98 @@ export default function ProductInfoRecomm() {
                             })}
                         </div>
 
-                        {/* Tab Content: Description */}
+                        {/* TAB 1: Description */}
                         {activeTab === 'description' && (
                             <div>
-                                <p className="text-secondary mb-3" style={{ fontSize: '0.95rem', lineHeight: '1.7' }}>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                                </p>
                                 <p className="text-secondary mb-4" style={{ fontSize: '0.95rem', lineHeight: '1.7' }}>
-                                    Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+                                    {product.description}
                                 </p>
 
                                 {/* Specifications Table */}
                                 <div className="border rounded mb-4 overflow-hidden" style={{ borderColor: '#e5e7eb' }}>
-                                    {[
-                                        { label: 'Model', value: '#8786867' },
-                                        { label: 'Style', value: 'Classic style' },
-                                        { label: 'Certificate', value: 'ISO-89891212' },
-                                        { label: 'Size', value: '34mm x 450mm x 19mm' },
-                                        { label: 'Memory', value: '36GB RAM' }
-                                    ].map((row, idx, arr) => (
+                                    {specifications.map((row, idx, arr) => (
                                         <div 
                                             key={row.label} 
                                             className={`row g-0 px-3 py-2 ${idx !== arr.length - 1 ? 'border-bottom' : ''}`}
                                             style={{ backgroundColor: idx % 2 === 0 ? '#f9fafb' : '#fff', borderColor: '#e5e7eb', fontSize: '0.9rem' }}
                                         >
                                             <div className="col-4 text-muted fw-normal">{row.label}</div>
-                                            <div className="col-8 text-dark fw-semibold">{row.value}</div>
+                                            <div className="col-8 text-dark fw-semibold text-capitalize">{row.value}</div>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Checklist Features */}
+                                {/* Feature Bullet Points */}
                                 <div className="d-flex flex-column gap-2 text-secondary" style={{ fontSize: '0.9rem' }}>
-                                    {[
-                                        "Some great feature name here",
-                                        "Lorem ipsum dolor sit amet, consectetur",
-                                        "Duis aute irure dolor in reprehenderit",
-                                        "Some great feature name here"
-                                    ].map((feature, i) => (
-                                        <div key={i} className="d-flex align-items-center gap-2">
-                                            <Check size={18} className="text-secondary" />
-                                            <span>{feature}</span>
-                                        </div>
-                                    ))}
+                                    <div className="d-flex align-items-center gap-2">
+                                        <Check size={18} className="text-success" />
+                                        <span>Return Policy: {product.returnPolicy || '30 days return policy'}</span>
+                                    </div>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <Check size={18} className="text-success" />
+                                        <span>Warranty: {product.warrantyInformation || '1 year warranty'}</span>
+                                    </div>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <Check size={18} className="text-success" />
+                                        <span>Shipping: {product.shippingInformation || 'Free shipping'}</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {activeTab !== 'description' && (
-                            <div className="py-5 text-center text-muted">
-                                Content for {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} coming soon...
+                        {/* TAB 2: Reviews */}
+                        {activeTab === 'reviews' && (
+                            <div>
+                                <h6 className="fw-bold mb-3">Customer Reviews</h6>
+                                {product.reviews && product.reviews.length > 0 ? (
+                                    <div className="d-flex flex-column gap-3">
+                                        {product.reviews.map((rev, idx) => (
+                                            <div key={idx} className="border-bottom pb-3">
+                                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                                    <span className="fw-semibold text-dark">{rev.reviewerName}</span>
+                                                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                                                        {new Date(rev.date).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <div className="text-warning mb-1">
+                                                    {[...Array(rev.rating)].map((_, i) => (
+                                                        <StarFill key={i} size={12} className="me-1" />
+                                                    ))}
+                                                </div>
+                                                <p className="text-secondary mb-0" style={{ fontSize: '0.875rem' }}>
+                                                    {rev.comment}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-muted">No reviews available yet.</p>
+                                )}
                             </div>
                         )}
+
+                        {/* TAB 3: Shipping */}
+                        {activeTab === 'shipping' && (
+                            <div className="text-secondary" style={{ fontSize: '0.95rem' }}>
+                                <p><strong>Shipping Options:</strong> {product.shippingInformation}</p>
+                                <p><strong>Handling Time:</strong> Ships within 1-2 business days.</p>
+                                <p><strong>Return Policy:</strong> {product.returnPolicy}</p>
+                            </div>
+                        )}
+
+                        {/* TAB 4: About Seller */}
+                        {activeTab === 'about seller' && (
+                            <div className="text-secondary" style={{ fontSize: '0.95rem' }}>
+                                <p><strong>Verified Supplier:</strong> {product.brand || 'Official Direct Brand'}</p>
+                                <p><strong>Location:</strong> Germany, Berlin</p>
+                                <p><strong>Rating:</strong> {product.rating} / 5.0</p>
+                            </div>
+                        )}
+
                     </Card>
                 </Col>
 
-                {/* RIGHT COLUMN: You may like Recommendations */}
+                {/* RIGHT COLUMN: You May Like Recommendations */}
                 <Col lg={4} md={12}>
                     <Card className="border shadow-sm bg-white p-3" style={{ borderRadius: '8px', borderColor: '#e5e7eb' }}>
                         <h5 className="fw-bold text-dark mb-3 px-2" style={{ fontSize: '1.05rem' }}>
@@ -133,11 +192,12 @@ export default function ProductInfoRecomm() {
                         </h5>
 
                         <div className="d-flex flex-column gap-3">
-                            {recommendations.map((item, index) => (
+                            {recommendations.map((item) => (
                                 <div 
-                                    key={index} 
-                                    className="d-flex align-items-center gap-3 p-2 rounded cursor-pointer transition-all"
-                                    style={{ borderRadius: '6px' }}
+                                    key={item.id} 
+                                    onClick={() => navigate(`/product/${item.id}`)}
+                                    className="d-flex align-items-center gap-3 p-2 rounded transition-all"
+                                    style={{ cursor: 'pointer', borderRadius: '6px' }}
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >
@@ -146,7 +206,7 @@ export default function ProductInfoRecomm() {
                                         style={{ width: '64px', height: '64px', borderColor: '#e5e7eb' }}
                                     >
                                         <img 
-                                            src={item.img} 
+                                            src={item.thumbnail} 
                                             alt={item.title} 
                                             style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                                         />
@@ -165,8 +225,8 @@ export default function ProductInfoRecomm() {
                                         >
                                             {item.title}
                                         </div>
-                                        <div className="text-muted" style={{ fontSize: '0.85rem' }}>
-                                            {item.price}
+                                        <div className="text-danger fw-bold" style={{ fontSize: '0.85rem' }}>
+                                            ${item.price}
                                         </div>
                                     </div>
                                 </div>

@@ -17,6 +17,7 @@ import BeforeExtraCardImage from "../assets/imgs/BeforeExtraCardImage.png";
 import { Search02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Nav from "react-bootstrap/Nav";
+import { Link } from "react-router";
 const ProductPage = () => {
   return (
     <>
@@ -66,7 +67,9 @@ const ProductPage = () => {
                       <Button className="w-100 ">Join now</Button>
                     </div>
                     <div className="LogIn">
-                      <Button className="w-100 ">Log in</Button>
+                      <Button className="w-100 "as={Link} to="/login3" >
+                        Log in
+                      </Button>
                     </div>
                   </div>
                   <div className="card2RightSideHeroSection whiteFont">

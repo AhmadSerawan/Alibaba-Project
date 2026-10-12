@@ -1,10 +1,11 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { Container, Row, Col, Card, Form, Button } from "react-bootstrap";
 import { ArrowLeft, Lock, MessageSquare, Truck, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router";
 import { useCart } from "../Contexts/CartContext";
 
-
 export default function CartViewComp() {
+  const navigate = useNavigate();
   const {
     cartItems,
     savedItems,
@@ -18,7 +19,7 @@ export default function CartViewComp() {
   const [couponCode, setCouponCode] = useState("");
 
   const subtotal = cartItems.reduce(
-    (acc, item) => acc + item.price * item.qty,
+    (acc, item) => acc + (item.price || item.numericPrice || 0) * (item.qty || 1),
     0
   );
   const discount = cartItems.length > 0 ? 60.0 : 0.0;
@@ -28,8 +29,8 @@ export default function CartViewComp() {
   return (
     <div style={{ backgroundColor: "#f7fafc", minHeight: "100vh", padding: "2rem 0" }}>
       <Container style={{ maxWidth: "1140px" }}>
-        <h3 className="fw-bold mb-4 d-flex align-items-center gap5"  style={{ color: "#1c1c1c", fontSize: "1.5rem" }}>
-         <div> My cart</div> <div className="CartNumSt">{cartItems.length}</div>
+        <h3 className="fw-bold mb-4 d-flex align-items-center gap-3" style={{ color: "#1c1c1c", fontSize: "1.5rem" }}>
+          <div>My cart</div> <div className="CartNumSt">{cartItems.length}</div>
         </h3>
 
         <Row className="g-4">
@@ -55,7 +56,9 @@ export default function CartViewComp() {
                           }}
                         >
                           <img
-                            src={item.img}
+                            onClick={() => navigate(`/product/${item.id}`)}
+
+                            src={item.img || item.image}
                             alt={item.title}
                             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "cover" }}
                           />
@@ -69,10 +72,10 @@ export default function CartViewComp() {
                             {item.title}
                           </h6>
                           <div className="text-muted" style={{ fontSize: "0.85rem" }}>
-                            Size: {item.size}, Color: {item.color}, Material: {item.material}
+                            Size: {item.size || 'Medium'}, Color: {item.color || 'Default'}, Material: {item.material || 'Standard'}
                           </div>
                           <div className="text-muted mb-2" style={{ fontSize: "0.85rem" }}>
-                            Seller: {item.seller}
+                            Seller: {item.seller || 'Verified Supplier'}
                           </div>
 
                           <div className="d-flex gap-2">
@@ -115,12 +118,12 @@ export default function CartViewComp() {
                         style={{ minWidth: "110px" }}
                       >
                         <span className="fw-semibold mb-2" style={{ color: "#1c1c1c", fontSize: "1rem" }}>
-                          ${item.price.toFixed(2)}
+                          ${Number(item.price || item.numericPrice || 0).toFixed(2)}
                         </span>
 
                         <Form.Select
                           size="sm"
-                          value={item.qty}
+                          value={item.qty || 1}
                           onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
                           style={{
                             width: "90px",
@@ -158,6 +161,7 @@ export default function CartViewComp() {
                       borderRadius: "6px",
                       fontSize: "0.88rem",
                     }}
+                    onClick={() => navigate('/catpage')}
                   >
                     <ArrowLeft size={16} /> Back to shop
                   </Button>
@@ -325,15 +329,17 @@ export default function CartViewComp() {
                       style={{ height: "160px", backgroundColor: "#f8f9fa", overflow: "hidden" }}
                     >
                       <img
-                        src={item.image}
+                        onClick={() => navigate(`/product/${item.id}`)}
+
+                        src={item.image || item.img}
                         alt={item.title}
-                        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "cover" }}
+                        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                       />
                     </div>
                     <h6 className="fw-bold mb-1" style={{ fontSize: "0.95rem", color: "#1c1c1c" }}>
-                      {item.price}
+                      {typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : (item.price || `$${item.numericPrice}`)}
                     </h6>
-                    <p className="text-muted mb-3" style={{ fontSize: "0.85rem", lineHeight: "1.3" }}>
+                    <p className="text-muted mb-3 text-truncate" style={{ fontSize: "0.85rem", lineHeight: "1.3" }}>
                       {item.title}
                     </p>
                     <Button
