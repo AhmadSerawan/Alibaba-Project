@@ -2,12 +2,14 @@
 import { useState, useEffect } from 'react';
 import { Form, Button, Collapse } from 'react-bootstrap';
 import { ChevronUp, ChevronDown, Star, StarFill } from 'react-bootstrap-icons';
+import { CategoryService } from '../Services/CategoryService';
 
 export default function FilterSidebar({
   activeCategory = 'All',
   onSelectCategory = () => {},
   onFilterChange = () => {},
 }) {
+  // [{ id, name }] - the first entry is "All"
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
@@ -18,23 +20,24 @@ export default function FilterSidebar({
   const [condition, setCondition] = useState('Any');
   const [selectedRatings, setSelectedRatings] = useState([]);
 
-  // Fetch dynamic categories using DummyJSON
+  // Fetch dynamic categories from the Tamkeen API
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchCategories() {
-      try {
-        setLoadingCategories(true);
-        const res = await fetch('https://dummyjson.com/products/category-list');
-        if (!res.ok) throw new Error('API Response Error');
-        const data = await res.json();
-        setCategories(['All', ...data]);
-      } catch (err) {
-        console.warn('Categories API failed, using fallback:', err);
-        setCategories(['All', 'smartphones', 'laptops', 'fragrances', 'skincare', 'groceries']);
-      } finally {
+      setLoadingCategories(true);
+      // CategoryService returns [] if the request fails
+      const list = await CategoryService.getCategories();
+      if (!cancelled) {
+        setCategories([{ id: 'All', name: 'All' }, ...list]);
         setLoadingCategories(false);
       }
     }
     fetchCategories();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const triggerFilterUpdate = (overrides = {}) => {
@@ -74,14 +77,17 @@ export default function FilterSidebar({
             <div className="text-muted small">Loading categories...</div>
           ) : (
             categories.map((cat) => {
-              const catName = String(cat || '');
-              const isSelected = safeCategory === catName.toLowerCase();
+              const catName = String(cat.name || '');
+              // The URL can hold the category id or its name
+              const isSelected =
+                safeCategory === String(cat.id).toLowerCase() ||
+                safeCategory === catName.toLowerCase();
 
               return (
                 <button
-                  key={catName}
+                  key={cat.id}
                   type="button"
-                  onClick={() => onSelectCategory(catName)}
+                  onClick={() => onSelectCategory(cat.id)}
                   className={`btn btn-link text-start text-decoration-none p-0 small text-capitalize ${
                     isSelected ? 'fw-bold text-primary' : 'text-secondary'
                   }`}

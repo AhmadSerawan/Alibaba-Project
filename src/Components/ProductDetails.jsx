@@ -15,6 +15,8 @@ import {
     CartPlus
 } from 'react-bootstrap-icons';
 import { useCart } from '../Contexts/CartContext';
+import { apiGet, getImage } from '../Config/api.js';
+import { CategoryService } from '../Services/CategoryService';
 
 export default function ProductDetails() {
     const { productId } = useParams();
@@ -24,45 +26,67 @@ export default function ProductDetails() {
     const { handleMoveToCart, handleSaveForLater } = useCart();
 
     const [product, setProduct] = useState(null);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState('');
     const [isSaved, setIsSaved] = useState(false);
     const [added, setAdded] = useState(false);
 
+    // Tamkeen categories (to show the category name of the product)
     useEffect(() => {
+        let cancelled = false;
+        CategoryService.getCategories().then((list) => {
+            if (!cancelled) setCategories(list);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // Tamkeen API: GET /product/{id}
+    useEffect(() => {
+        let cancelled = false;
+
         async function fetchProductData() {
             setLoading(true);
             try {
-                const res = await fetch(`https://dummyjson.com/products/${productId}`);
-                if (!res.ok) throw new Error("Product not found");
-                const data = await res.json();
+                const json = await apiGet(`/product/${productId}`);
+                const data = json?.data?.product ?? json?.data ?? json;
+                if (!data || data.id === undefined) throw new Error("Product not found");
+                if (cancelled) return;
 
                 setProduct(data);
-                const mainImg = data.thumbnail || (data.images && data.images[0]) || '';
-                setSelectedImage(mainImg);
+                setSelectedImage(getImage(data));
             } catch (error) {
                 console.error("Error fetching product details:", error);
-                setProduct(null);
+                if (!cancelled) setProduct(null);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         }
 
         if (productId) {
             fetchProductData();
         }
+
+        return () => {
+            cancelled = true;
+        };
     }, [productId]);
+
+    const productName = product ? (product.title ?? product.name ?? '') : '';
+    const productPrice = product ? Number(product.price) || 0 : 0;
 
     const handleAddToCart = () => {
         if (!product) return;
 
         handleMoveToCart({
             id: product.id,
-            title: product.title,
-            numericPrice: product.price,
-            price: product.price,
-            img: selectedImage || product.thumbnail,
-            image: selectedImage || product.thumbnail,
+            title: productName,
+            numericPrice: productPrice,
+            price: productPrice,
+            img: selectedImage || getImage(product),
+            image: selectedImage || getImage(product),
         });
 
         setAdded(true);
@@ -76,11 +100,11 @@ export default function ProductDetails() {
             // Push product object to CartContext savedItems
             handleSaveForLater({
                 id: product.id,
-                title: product.title,
-                price: `$${product.price}`,
-                numericPrice: product.price,
-                image: selectedImage || product.thumbnail,
-                img: selectedImage || product.thumbnail,
+                title: productName,
+                price: `$${productPrice}`,
+                numericPrice: productPrice,
+                image: selectedImage || getImage(product),
+                img: selectedImage || getImage(product),
             });
             setIsSaved(true);
         } else {
@@ -108,11 +132,25 @@ export default function ProductDetails() {
         );
     }
 
-    const thumbnails = product.images && product.images.length > 0
-        ? product.images
-        : [product.thumbnail];
+    // Gallery: main image + any extra images from the API (no duplicates)
+    const extraImages = Array.isArray(product.images)
+        ? product.images.map((img) =>
+              getImage(typeof img === 'string' ? { image: img } : img, null)
+          )
+        : [];
+    const thumbnails = [...new Set([getImage(product, null), ...extraImages].filter(Boolean))];
+    if (thumbnails.length === 0) thumbnails.push(getImage(product));
 
-    const basePrice = product.price || 0;
+    const categoryName =
+        (typeof product.category === 'string' ? product.category : product.category?.name) ||
+        categories.find((c) => String(c.id) === String(product.category_id))?.name ||
+        '';
+
+    const stockCount = product.stock ?? product.quantity;
+    const supplierName =
+        product.seller?.name ?? product.user?.name ?? product.brand ?? "Guanjoi Trading LLC";
+
+    const basePrice = productPrice;
     const tier1 = basePrice.toFixed(2);
     const tier2 = (basePrice * 0.9).toFixed(2);
     const tier3 = (basePrice * 0.8).toFixed(2);
@@ -130,7 +168,7 @@ export default function ProductDetails() {
                         >
                             <img
                                 src={selectedImage}
-                                alt={product.title}
+                                alt={productName}
                                 style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                             />
                         </div>
@@ -163,11 +201,12 @@ export default function ProductDetails() {
                     <Col lg={5} md={12} className="border-end-lg pe-lg-4">
                         <div className="d-flex align-items-center text-success mb-2" style={{ fontSize: '0.9rem', fontWeight: 500 }}>
                             <Check size={18} className="me-1 fw-bold" />
-                            {product.availabilityStatus || (product.stock > 0 ? "In stock" : "Out of stock")}
+                            {product.availabilityStatus ||
+                                (stockCount === undefined || stockCount > 0 ? "In stock" : "Out of stock")}
                         </div>
 
                         <h1 className="h5 fw-bold text-dark mb-2" style={{ lineHeight: '1.4' }}>
-                            {product.title}
+                            {productName}
                         </h1>
 
                         <div className="d-flex align-items-center flex-wrap gap-2 mb-3" style={{ fontSize: '0.85rem' }}>
@@ -178,14 +217,14 @@ export default function ProductDetails() {
                                 <StarFill size={13} />
                                 <StarHalf size={13} />
                             </div>
-                            <span className="fw-bold text-dark ms-1">{product.rating}</span>
+                            <span className="fw-bold text-dark ms-1">{product.rating ?? 4.5}</span>
                             <span className="text-muted">•</span>
                             <span className="text-secondary d-flex align-items-center gap-1">
-                                <ChatSquareText size={13} className="text-muted" /> {product.reviews ? product.reviews.length : 12} reviews
+                                <ChatSquareText size={13} className="text-muted" /> {Array.isArray(product.reviews) ? product.reviews.length : 12} reviews
                             </span>
                             <span className="text-muted">•</span>
                             <span className="text-secondary d-flex align-items-center gap-1">
-                                <BagCheck size={13} className="text-muted" /> {product.stock || 154} available
+                                <BagCheck size={13} className="text-muted" /> {stockCount || 154} available
                             </span>
                         </div>
 
@@ -210,11 +249,11 @@ export default function ProductDetails() {
                         <div className="d-flex flex-column gap-2" style={{ fontSize: '0.9rem' }}>
                             <div className="row pb-2 border-bottom border-light">
                                 <div className="col-4 text-muted">Price:</div>
-                                <div className="col-8 fw-semibold text-dark">Negotiable (${product.price})</div>
+                                <div className="col-8 fw-semibold text-dark">Negotiable (${productPrice})</div>
                             </div>
                             <div className="row pb-2 border-bottom border-light">
                                 <div className="col-4 text-muted">Category:</div>
-                                <div className="col-8 fw-semibold text-dark text-capitalize">{product.category}</div>
+                                <div className="col-8 fw-semibold text-dark text-capitalize">{categoryName}</div>
                             </div>
                             <div className="row pb-2 border-bottom border-light">
                                 <div className="col-4 text-muted">Brand:</div>
@@ -251,7 +290,7 @@ export default function ProductDetails() {
                                 </div>
                                 <div>
                                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>Supplier</div>
-                                    <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{product.brand || "Guanjoi Trading LLC"}</div>
+                                    <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{supplierName}</div>
                                 </div>
                             </div>
 

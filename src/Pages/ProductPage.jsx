@@ -1,24 +1,149 @@
-import { Button, Col, Form, Row } from "react-bootstrap";
+import { Button, Col, Form, Row, Spinner } from "react-bootstrap";
 import { Container } from "react-bootstrap";
 import MiddleImage from "../assets/imgs/MiddleImage.png";
-import SmartWatch from "../assets/imgs/SmartWatch.png";
-import Laptopp from "../assets/imgs/Laptopp.png";
-import Cameraa from "../assets/imgs/Cameraa.png";
-import HeadPhone from "../assets/imgs/HeadPhone.png";
-import Phonee from "../assets/imgs/Phonee.png";
 import Avatar from "../assets/imgs/Avatar.png";
 import QuoteBg from "../assets/imgs/QuoteBg.png";
 import SecCardOne from "../assets/imgs/SecCardOne.jpg";
 import imageBack from "../assets/imgs/imageBack.png";
-import Chair from "../assets/imgs/Chair.png";
-import ArabicEmirates from "../assets/imgs/ArabicEmirates.png";
-import ItemImage from "../assets/imgs/ItemImage.png";
-import BeforeExtraCardImage from "../assets/imgs/BeforeExtraCardImage.png";
 import { Search02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Nav from "react-bootstrap/Nav";
 import { Link } from "react-router";
+import { getImage, placeholderImage, useApiAll } from "../Config/api.js";
+
+/* ---------------- helpers ---------------- */
+
+const nameOf = (item) => item?.name ?? item?.title ?? "";
+
+const chunk = (list, size) => {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+};
+
+// Countries for "Suppliers by region" (flags from flagcdn.com)
+const COUNTRIES = [
+  { code: "ae", name: "Arabic Emirates" },
+  { code: "sa", name: "Saudi Arabia" },
+  { code: "sy", name: "Syria" },
+  { code: "eg", name: "Egypt" },
+  { code: "tr", name: "Turkey" },
+  { code: "jo", name: "Jordan" },
+  { code: "lb", name: "Lebanon" },
+  { code: "kw", name: "Kuwait" },
+  { code: "qa", name: "Qatar" },
+  { code: "cn", name: "China" },
+];
+
+// Loading / error note for a section that depends on an API request
+const SectionNote = ({ request, className = "" }) => {
+  if (request.loading) {
+    return (
+      <div className={`py-3 text-center ${className}`}>
+        <Spinner animation="border" size="sm" className="me-2" />
+        Loading...
+      </div>
+    );
+  }
+  if (request.error) {
+    return (
+      <div className={`py-3 text-center text-danger ${className}`} role="alert">
+        {request.error.status === 401
+          ? "Please log in to see this content."
+          : request.error.message || "Could not load data."}
+      </div>
+    );
+  }
+  return null;
+};
+
+// One small product (name + price + photo) used in the two "Home and outdoor" blocks
+const ProductTile = ({ product }) => (
+  <div className="aboveCardProd  rel ">
+    <div className="productName weight400 font16" style={{ color: "#1c1c1c" }}>
+      {nameOf(product)}
+    </div>
+    <div className="From weight400 font13" style={{ color: "#8b96a5" }}>
+      From
+    </div>
+    <div className="productPrice weight400 font13" style={{ color: "#8b96a5" }}>
+      USD {product.price}
+    </div>
+    <img
+      src={getImage(product)}
+      className="imageAbsalim abs"
+      alt={nameOf(product)}
+    />
+  </div>
+);
+
+// 8 products -> 4 columns x 2
+const ProductColumns = ({ products }) =>
+  chunk(products, 2).map((pair, index) => (
+    <div
+      key={index}
+      className="productColumn d-flex flex-column w-25 borderCustmright space-between"
+    >
+      {pair.map((product, i) => (
+        <ProductTile key={`${product.id}-${i}`} product={product} />
+      ))}
+    </div>
+  ));
+
 const ProductPage = () => {
+  /* ----- API (Tamkeen) ----- */
+  const productsReq = useApiAll("/product");
+  const categoriesReq = useApiAll("/category");
+
+  const products = productsReq.items;
+  const categories = categoriesReq.items;
+
+  // Fixed (not random) slice of the product list; wraps around if the list is short
+  const take = (start, count) =>
+    products.length
+      ? Array.from(
+          { length: count },
+          (_, i) => products[(start + i) % products.length]
+        )
+      : [];
+
+  // Deals and offers: products 1-5
+  const dealsItems = take(0, 5);
+
+  // First "Home and outdoor": products 6-13
+  const blockOneItems = take(5, 8);
+
+  // Second block: first category from the API + its products
+  const blockTwoCategory = categories[0] || null;
+  const inCategory = blockTwoCategory
+    ? products.filter(
+        (p) =>
+          String(p.category_id ?? p.category?.id) === String(blockTwoCategory.id)
+      )
+    : [];
+  const blockTwoItems =
+    inCategory.length >= 8
+      ? inCategory.slice(0, 8)
+      : [...inCategory, ...take(13, 8 - inCategory.length)];
+
+  // Recommended items: products 22-31 (2 rows x 5)
+  const recommendedRows = chunk(take(200, 10),5);
+
+  // Extra services: fixed categories (text) + their / product photos
+  const extraCards = [1, 2, 3, 4].map((n, i) => {
+    const category = categories.length ? categories[n % categories.length] : null;
+    const image =
+      getImage(category, null) ||
+      (products.length
+        ? getImage(products[(31 + i) % products.length])
+        : placeholderImage("Hub"));
+    return {
+      id: i,
+      image,
+      text: category ? `Source from ${nameOf(category)}` : "Source from Industry Hubs",
+    };
+  });
+
   return (
     <>
       <div className="breakUnder2" />
@@ -64,10 +189,12 @@ const ProductPage = () => {
                       </div>
                     </div>
                     <div className="JoinNow">
-                      <Button className="w-100 ">Join now</Button>
+                      <Button className="w-100 btn-secondary" as={Link} to="/register">
+                        Join now
+                      </Button>
                     </div>
                     <div className="LogIn">
-                      <Button className="w-100 "as={Link} to="/login3" >
+                      <Button className="w-100 " as={Link} to="/login3">
                         Log in
                       </Button>
                     </div>
@@ -82,6 +209,8 @@ const ProductPage = () => {
               </Col>
             </Row>
           </div>
+
+          {/* ---------- Deals and offers (API) ---------- */}
           <div className="inSession1 mt-5">
             <Row>
               <Col lg={3} className="">
@@ -116,53 +245,31 @@ const ProductPage = () => {
               </Col>
               <Col lg={9}>
                 <div className="DealsAndOffersCards d-flex align-items-center">
-                  <div className="DealsAndOffersCard borderCustmright d-flex flex-column align-items-center text-center">
-                    <div className="imageWRapper">
-                      <img src={SmartWatch} alt="" />
+                  <SectionNote request={productsReq} className="w-100" />
+                  {dealsItems.map((product, index) => (
+                    <div
+                      key={`${product.id}-${index}`}
+                      className={`DealsAndOffersCard borderCustmright d-flex flex-column ${
+                        index === 0 ? "align-items-center text-center" : ""
+                      }`}
+                    >
+                      <div className="imageWRapper">
+                        <img src={getImage(product)} alt={nameOf(product)} />
+                      </div>
+                      <div className="textCardOffer weight400 font16">
+                        {nameOf(product)}
+                      </div>
+                      <span className="discount">
+                        -{product.discount ?? product.discount_percentage ?? 25}%
+                      </span>
                     </div>
-                    <div className="textCardOffer weight400 font16">
-                      Smart watches
-                    </div>
-                    <span className="discount">-25%</span>
-                  </div>
-                  <div className="DealsAndOffersCard borderCustmright d-flex flex-column ">
-                    <div className="imageWRapper">
-                      <img src={Laptopp} alt="" />
-                    </div>
-                    <div className="textCardOffer weight400 font16">
-                      Laptops
-                    </div>
-                    <span className="discount">-25%</span>
-                  </div>
-                  <div className="DealsAndOffersCard borderCustmright d-flex flex-column ">
-                    <div className="imageWRapper">
-                      <img src={Cameraa} alt="" />
-                    </div>
-                    <div className="textCardOffer weight400 font16">
-                      GoPro cameras
-                    </div>
-                    <span className="discount">-25%</span>
-                  </div>
-                  <div className="DealsAndOffersCard borderCustmright d-flex flex-column ">
-                    <div className="imageWRapper">
-                      <img src={HeadPhone} alt="" />
-                    </div>
-                    <div className="textCardOffer weight400 font16">
-                      Headphones
-                    </div>
-                    <span className="discount">-25%</span>
-                  </div>
-                  <div className="DealsAndOffersCard borderCustmright d-flex flex-column ">
-                    <div className="imageWRapper">
-                      <img src={Phonee} alt="" />
-                    </div>
-                    <div className="textCardOffer weight400 font16">Phones</div>
-                    <span className="discount">-25%</span>
-                  </div>
+                  ))}
                 </div>
               </Col>
             </Row>
           </div>
+
+          {/* ---------- Home and outdoor #1 (products from API) ---------- */}
           <div className="inSession1 mt-5 rel">
             <Row>
               <Col lg={3}>
@@ -185,188 +292,15 @@ const ProductPage = () => {
               </Col>
               <Col lg={9}>
                 <div className="productListing d-flex space-between h-100 ">
-                  <div className="productColumn d-flex flex-column w-25 borderCustmright space-between">
-                    <div className="aboveCardProd  rel ">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-                  <div className="productColumn d-flex flex-column borderCustmright w-25 space-between">
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-                  <div className="productColumn d-flex flex-column w-25 borderCustmright space-between">
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-                  <div className="productColumn d-flex flex-column w-25 borderCustmright space-between">
-                    <div className="aboveCardProd   rel ">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-
+                  <SectionNote request={productsReq} className="w-100" />
+                  <ProductColumns products={blockOneItems} />
                   <div className="breakUnder3 abs"></div>
                 </div>
               </Col>
             </Row>
           </div>
+
+          {/* ---------- Home and outdoor #2 (category + products from API) ---------- */}
           <div className="inSession1 mt-5 rel">
             <Row>
               <Col lg={3}>
@@ -382,195 +316,21 @@ const ProductPage = () => {
                     }}
                   ></div>
                   <div className="secondCardsListText1 rel weight700 font20 width40">
-                    Home and outdoor
+                    {nameOf(blockTwoCategory) || "Home and outdoor"}
                   </div>
                   <button className="buttonSecCard rel">Source now</button>
                 </div>
               </Col>
               <Col lg={9}>
                 <div className="productListing d-flex space-between h-100 ">
-                  <div className="productColumn d-flex flex-column w-25 borderCustmright space-between">
-                    <div className="aboveCardProd  rel ">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-                  <div className="productColumn d-flex flex-column borderCustmright w-25 space-between">
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-                  <div className="productColumn d-flex flex-column w-25 borderCustmright space-between">
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-                  <div className="productColumn d-flex flex-column w-25 borderCustmright space-between">
-                    <div className="aboveCardProd   rel ">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                    <div className="aboveCardProd  rel">
-                      <div
-                        className="productName weight400 font16"
-                        style={{ color: "#1c1c1c" }}
-                      >
-                        Soft chairs
-                      </div>
-                      <div
-                        className="From weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        From
-                      </div>
-                      <div
-                        className="productPrice weight400 font13"
-                        style={{ color: "#8b96a5" }}
-                      >
-                        USD 19
-                      </div>
-                      <img src={Chair} className="imageAbsalim abs" />
-                    </div>
-                  </div>
-
+                  <SectionNote request={productsReq} className="w-100" />
+                  <ProductColumns products={blockTwoItems} />
                   <div className="breakUnder3 abs"></div>
                 </div>
               </Col>
             </Row>
           </div>
+
           <div className="inSession2 mt-5 rel">
             <div
               className="backPink abs"
@@ -639,386 +399,95 @@ const ProductPage = () => {
               </div>
             </div>
           </div>
+
           <div className="RecommendedItemsSection d-flex flex-column gap20 mt-5">
             <div className="text1REc font24 weight700">Recommended items</div>
+
+            {/* ---------- Recommended items (API) ---------- */}
             <div className="RecItemCards d-flex flex-column gap20 ">
-              <div className="RecItemCardsAbove d-flex gap20">
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
+              <SectionNote request={productsReq} />
+              {recommendedRows.map((row, rowIndex) => (
+                <div key={rowIndex} className="RecItemCardsAbove d-flex gap20">
+                  {row.map((product, i) => (
+                    <div
+                      key={`${(product.id)}-${i}`}
+                      className="itemRec inSession1 d-flex flex-column gap10"
+                    >
+                      <div className="ItemImage">
+                        <img src={getImage(product)} alt={nameOf(product)} />
+                      </div>
+                      <div className="priceDollar weight600 font16">
+                        ${product.price}
+                      </div>
+                      <div
+                        className="ItemDesc font16 weight400"
+                        style={{ color: "#8b96a5" }}
+                      >
+                        {nameOf(product)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-              </div>
-              <div className="RecItemCardsAbove d-flex gap20">
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-                <div className="itemRec inSession1 d-flex flex-column gap10">
-                  <div className="ItemImage">
-                    <img src={ItemImage} alt="" />
-                  </div>
-                  <div className="priceDollar weight600 font16">$10.30</div>
-                  <div
-                    className="ItemDesc font16 weight400"
-                    style={{ color: "#8b96a5" }}
-                  >
-                    T-shirts with multiple colors, for men
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
+
+            {/* ---------- Our extra services (photos + text from API) ---------- */}
             <div className="OurExtraServSection mb-3">
               <div className="OurExtraSrvText font24 weight600">
                 Our extra services
               </div>
               <div className="ExtraCardsSrvice d-flex justify-content-between gap20 mt-3">
-                <div className="ExtraCard rel inSession1">
-                  <div className="imageBefore">
-                    <img src={BeforeExtraCardImage} className="abs" alt="" />
+                {extraCards.map((card) => (
+                  <div key={card.id} className="ExtraCard rel inSession1">
+                    <div className="imageBefore">
+                      <img src={card.image} className="abs" alt="" />
+                    </div>
+                    <div className="TextExtra22">{card.text}</div>
+                    <div className="abs iconExtraCa">
+                      <HugeiconsIcon icon={Search02Icon} />
+                    </div>
                   </div>
-                  <div className="TextExtra22">Source from Industry Hubs</div>
-                  <div className="abs iconExtraCa">
-                    <HugeiconsIcon icon={Search02Icon} />
-                  </div>
-                </div>
-                <div className="ExtraCard rel inSession1">
-                  <div className="imageBefore">
-                    <img src={BeforeExtraCardImage} className="abs" alt="" />
-                  </div>
-                  <div className="TextExtra22">Source from Industry Hubs</div>
-                  <div className="abs iconExtraCa">
-                    <HugeiconsIcon icon={Search02Icon} />
-                  </div>
-                </div>
-                <div className="ExtraCard rel inSession1">
-                  <div className="imageBefore">
-                    <img src={BeforeExtraCardImage} className="abs" alt="" />
-                  </div>
-                  <div className="TextExtra22">Source from Industry Hubs</div>
-                  <div className="abs iconExtraCa">
-                    <HugeiconsIcon icon={Search02Icon} />
-                  </div>
-                </div>
-                <div className="ExtraCard rel inSession1">
-                  <div className="imageBefore">
-                    <img src={BeforeExtraCardImage} className="abs" alt="" />
-                  </div>
-                  <div className="TextExtra22">Source from Industry Hubs</div>
-                  <div className="abs iconExtraCa">
-                    <HugeiconsIcon icon={Search02Icon} />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
+
+          {/* ---------- Suppliers by region (different countries + flags) ---------- */}
           <div className="SuppliersSection mt-3">
             <div className="suppText font24 weight600">Suppliers by region</div>
-            <div className="CountriesSuppler mt-3 d-flex gap20">
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
+            {chunk(COUNTRIES, 5).map((row, rowIndex) => (
+              <div key={rowIndex} className="CountriesSuppler mt-3 d-flex gap20">
+                {row.map((country) => (
+                  <div
+                    key={country.code}
+                    className="counteryCard d-flex gap10 align-items-center"
+                    style={{ width: "221px" }}
+                  >
+                    <div className="CountryImage mb-1">
+                      <img
+                        src={`https://flagcdn.com/w40/${country.code}.png`}
+                        srcSet={`https://flagcdn.com/w80/${country.code}.png 2x`}
+                        alt={country.name}
+                        style={{
+                          width: "28px",
+                          height: "20px",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </div>
+                    <div className="countryNameAndWebsite d-flex flex-column ">
+                      <div className="countryName font16 weight400 ">
+                        {country.name}
+                      </div>
+                      <div className="CountrywebSite font13 weight400">
+                        shopname.{country.code}
+                      </div>
+                    </div>
                   </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
+                ))}
               </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="CountriesSuppler mt-3 d-flex gap20">
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-              <div
-                className="counteryCard d-flex gap10 align-items-center"
-                style={{ width: "221px" }}
-              >
-                <div className="CountryImage mb-1">
-                  <img
-                    src={ArabicEmirates}
-                    alt=""
-                    style={{ width: "28px", height: "20px" }}
-                  />
-                </div>
-                <div className="countryNameAndWebsite d-flex flex-column ">
-                  <div className="countryName font16 weight400 ">
-                    Arabic Emirates
-                  </div>
-                  <div className="CountrywebSite font13 weight400">
-                    shopname.ae
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-          
         </Container>
       </div>
     </>

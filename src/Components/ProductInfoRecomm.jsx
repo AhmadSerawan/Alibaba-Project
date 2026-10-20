@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import { Check, StarFill, StarHalf } from 'react-bootstrap-icons';
+import { apiGet, getImage, toList } from '../Config/api.js';
+import { CategoryService } from '../Services/CategoryService';
 
 export default function ProductInfoRecomm() {
     const { productId } = useParams();
@@ -9,38 +11,63 @@ export default function ProductInfoRecomm() {
 
     const [activeTab, setActiveTab] = useState('description');
     const [product, setProduct] = useState(null);
+    const [categories, setCategories] = useState([]);
     const [recommendations, setRecommendations] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Tamkeen categories (to show the category name of the product)
     useEffect(() => {
+        let cancelled = false;
+        CategoryService.getCategories().then((list) => {
+            if (!cancelled) setCategories(list);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
         async function fetchInfoAndRecommendations() {
             setLoading(true);
             try {
-                // 1. Fetch current product details
-                const res = await fetch(`https://dummyjson.com/products/${productId}`);
-                if (!res.ok) throw new Error("Failed to fetch product");
-                const data = await res.json();
+                // 1. Fetch current product details (Tamkeen API)
+                const json = await apiGet(`/product/${productId}`);
+                const data = json?.data?.product ?? json?.data ?? json;
+                if (!data || data.id === undefined) throw new Error("Failed to fetch product");
+                if (cancelled) return;
                 setProduct(data);
 
-                // 2. Fetch category recommendations for "You may like"
-                if (data.category) {
-                    const recRes = await fetch(`https://dummyjson.com/products/category/${data.category}?limit=6`);
-                    if (recRes.ok) {
-                        const recData = await recRes.json();
-                        // Exclude the current active product
-                        setRecommendations(recData.products.filter((p) => p.id !== data.id));
+                // 2. Fetch products of the same category for "You may like"
+                const categoryId = data.category_id ?? data.category?.id;
+                if (categoryId) {
+                    try {
+                        const recJson = await apiGet('/product', { category_id: categoryId });
+                        if (!cancelled) {
+                            // Exclude the current active product
+                            setRecommendations(
+                                toList(recJson).filter((p) => p.id !== data.id).slice(0, 6)
+                            );
+                        }
+                    } catch (recError) {
+                        console.error("Error loading recommendations:", recError);
                     }
                 }
             } catch (error) {
                 console.error("Error loading product info/recommendations:", error);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         }
 
         if (productId) {
             fetchInfoAndRecommendations();
         }
+
+        return () => {
+            cancelled = true;
+        };
     }, [productId]);
 
     if (loading) {
@@ -53,10 +80,17 @@ export default function ProductInfoRecomm() {
 
     if (!product) return null;
 
+    const categoryName =
+        (typeof product.category === 'string' ? product.category : product.category?.name) ||
+        categories.find((c) => String(c.id) === String(product.category_id))?.name ||
+        '';
+
+    const reviews = Array.isArray(product.reviews) ? product.reviews : [];
+
     // Dynamic specs array built from API data
     const specifications = [
         { label: 'Brand', value: product.brand || 'Generic' },
-        { label: 'Category', value: product.category },
+        { label: 'Category', value: categoryName },
         { label: 'SKU', value: product.sku || 'N/A' },
         { label: 'Weight', value: `${product.weight || 1} kg` },
         { label: 'Dimensions', value: product.dimensions ? `${product.dimensions.width} x ${product.dimensions.height} x ${product.dimensions.depth} cm` : 'Standard' },
@@ -135,9 +169,9 @@ export default function ProductInfoRecomm() {
                         {activeTab === 'reviews' && (
                             <div>
                                 <h6 className="fw-bold mb-3">Customer Reviews</h6>
-                                {product.reviews && product.reviews.length > 0 ? (
+                                {reviews.length > 0 ? (
                                     <div className="d-flex flex-column gap-3">
-                                        {product.reviews.map((rev, idx) => (
+                                        {reviews.map((rev, idx) => (
                                             <div key={idx} className="border-bottom pb-3">
                                                 <div className="d-flex justify-content-between align-items-center mb-1">
                                                     <span className="fw-semibold text-dark">{rev.reviewerName}</span>
@@ -146,7 +180,7 @@ export default function ProductInfoRecomm() {
                                                     </span>
                                                 </div>
                                                 <div className="text-warning mb-1">
-                                                    {[...Array(rev.rating)].map((_, i) => (
+                                                    {[...Array(Number(rev.rating) || 0)].map((_, i) => (
                                                         <StarFill key={i} size={12} className="me-1" />
                                                     ))}
                                                 </div>
@@ -165,18 +199,18 @@ export default function ProductInfoRecomm() {
                         {/* TAB 3: Shipping */}
                         {activeTab === 'shipping' && (
                             <div className="text-secondary" style={{ fontSize: '0.95rem' }}>
-                                <p><strong>Shipping Options:</strong> {product.shippingInformation}</p>
+                                <p><strong>Shipping Options:</strong> {product.shippingInformation || 'Free shipping'}</p>
                                 <p><strong>Handling Time:</strong> Ships within 1-2 business days.</p>
-                                <p><strong>Return Policy:</strong> {product.returnPolicy}</p>
+                                <p><strong>Return Policy:</strong> {product.returnPolicy || '30 days return policy'}</p>
                             </div>
                         )}
 
                         {/* TAB 4: About Seller */}
                         {activeTab === 'about seller' && (
                             <div className="text-secondary" style={{ fontSize: '0.95rem' }}>
-                                <p><strong>Verified Supplier:</strong> {product.brand || 'Official Direct Brand'}</p>
+                                <p><strong>Verified Supplier:</strong> {product.seller?.name ?? product.user?.name ?? product.brand ?? 'Official Direct Brand'}</p>
                                 <p><strong>Location:</strong> Germany, Berlin</p>
-                                <p><strong>Rating:</strong> {product.rating} / 5.0</p>
+                                <p><strong>Rating:</strong> {product.rating ?? 4.5} / 5.0</p>
                             </div>
                         )}
 
@@ -205,8 +239,8 @@ export default function ProductInfoRecomm() {
                                         style={{ width: '64px', height: '64px', borderColor: '#e5e7eb' }}
                                     >
                                         <img 
-                                            src={item.thumbnail} 
-                                            alt={item.title} 
+                                            src={getImage(item)} 
+                                            alt={item.title ?? item.name} 
                                             style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                                         />
                                     </div>
@@ -222,7 +256,7 @@ export default function ProductInfoRecomm() {
                                                 overflow: 'hidden'
                                             }}
                                         >
-                                            {item.title}
+                                            {item.title ?? item.name}
                                         </div>
                                         <div className="text-danger fw-bold" style={{ fontSize: '0.85rem' }}>
                                             ${item.price}

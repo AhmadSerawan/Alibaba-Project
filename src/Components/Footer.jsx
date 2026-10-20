@@ -5,6 +5,7 @@ import { useState } from "react";
 import ArabicEmirates from "../assets/imgs/ArabicEmirates.png";
 import English from "../assets/imgs/English.png";
 import FranceFlag from "../assets/imgs/FranceFlag.png";
+import appStore from "../assets/imgs/appStore.png"
 
 const Footer = () => {
   const [selectedLang, setSelectedLang] = useState("");
@@ -84,7 +85,7 @@ const Footer = () => {
             </div>
             <div className="secondColu d-flex flex-column">
               <div className="text111 weight500 font16">Get app</div>
-              <img src={marketButton} alt="" />
+              <img src={appStore} alt="" />
               <img src={marketButton} alt="" />
             </div>
           </div>

@@ -7,6 +7,8 @@ import Footer from "../Components/Footer";
 import Breadcrumb from "../Components/Breadcrumb";
 import FilterSidebar from "../Components/FilterSidebar";
 import CategoriyeRightSide from "../Components/CategoriyeRightSide";
+import { apiGetAll, getImage } from "../Config/api.js";
+import { CategoryService } from "../Services/CategoryService";
 
 export default function CatPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -17,6 +19,10 @@ export default function CatPage() {
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Tamkeen categories (used to turn the `category` param - id or name - into a category_id)
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   const [filters, setFilters] = useState({
     minPrice: 0,
@@ -37,39 +43,83 @@ export default function CatPage() {
     setSearchParams(newParams);
   };
 
-  // Fetch products from API when activeCategory changes
+  // Load categories from the Tamkeen API
   useEffect(() => {
+    let cancelled = false;
+    CategoryService.getCategories().then((list) => {
+      if (!cancelled) {
+        setCategories(list);
+        setCategoriesLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isAll =
+    !activeCategory || activeCategory === "All" || activeCategory === "All category";
+  const isNumeric = /^\d+$/.test(activeCategory);
+
+  const matchedCategory = useMemo(
+    () =>
+      categories.find(
+        (c) =>
+          String(c.id) === activeCategory ||
+          String(c.name).toLowerCase() === activeCategory.toLowerCase()
+      ) || null,
+    [categories, activeCategory]
+  );
+
+  const categoryId = isAll ? null : isNumeric ? activeCategory : matchedCategory?.id ?? null;
+  const waitingForCategories = !isAll && !isNumeric && !categoriesLoaded;
+  const categoryLabel = isAll ? "All" : matchedCategory?.name ?? activeCategory;
+
+  // Fetch products from the Tamkeen API when the category changes
+  useEffect(() => {
+    if (waitingForCategories) return undefined;
+
+    // A category name that doesn't exist in Tamkeen -> nothing to show
+    if (!isAll && !categoryId) {
+      setProducts([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
     async function fetchProducts() {
       setLoading(true);
       try {
-        const isAll = !activeCategory || activeCategory === "All" || activeCategory === "All category";
-        const url = isAll
-          ? "https://dummyjson.com/products?limit=100"
-          : `https://dummyjson.com/products/category/${encodeURIComponent(activeCategory)}`;
+        const rawList = await apiGetAll(
+          "/product",
+          categoryId ? { category_id: categoryId } : {}
+        );
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch products");
-        const data = await res.json();
-
-        const rawList = data.products || [];
         const normalized = rawList.map((item) => ({
           ...item,
-          image: item.thumbnail || (item.images && item.images[0]) || "",
+          title: item.title ?? item.name,
+          price: Number(item.price),
+          image: getImage(item, ""),
           rating: item.rating || 4.0,
           verified: item.rating >= 4.2,
         }));
 
-        setProducts(normalized);
+        if (!cancelled) setProducts(normalized);
       } catch (err) {
         console.error("Error fetching products:", err);
-        setProducts([]);
+        if (!cancelled) setProducts([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchProducts();
-  }, [activeCategory]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId, isAll, waitingForCategories]);
 
   // Real-time local filtering (Search Query + Sidebar Filters)
   const filteredProducts = useMemo(() => {
@@ -111,7 +161,7 @@ export default function CatPage() {
       <Container className="my-3 flex-grow-1">
         {/* Dynamic Breadcrumb synced with category */}
         <Breadcrumb
-          activeCategory={activeCategory}
+          activeCategory={categoryLabel}
           onSelectCategory={handleCategorySelect}
         />
 
@@ -135,7 +185,7 @@ export default function CatPage() {
             ) : (
               <CategoriyeRightSide
                 products={filteredProducts}
-                category={activeCategory}
+                category={categoryLabel}
               />
             )}
           </Col>

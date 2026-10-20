@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { AuthContext } from "../Contexts/AuthContext";
 import { getCurrentPhone, getProfile, saveProfile } from "../../profileStorage";
@@ -116,7 +116,7 @@ const Profile = () => {
               <p className="profile-email">{displaySub}</p>
             </div>
           </div>
-
+            <Button className="btn-primary outline-secondery font25 width22  " as={Link} to="/">Shopping</Button>
           <div className="profile-fields">
             <Form.Group controlId="profileFullName">
               <Form.Label>Full Name</Form.Label>

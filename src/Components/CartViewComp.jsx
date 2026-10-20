@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Container, Row, Col, Card, Form, Button } from "react-bootstrap";
 import { ArrowLeft, Lock, MessageSquare, Truck, ShoppingCart } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useCart } from "../Contexts/CartContext";
+import { calculateTotals, formatMoney, unitPrice, useCoupon } from "../Services/pricing.js";
 
 export default function CartViewComp() {
   const navigate = useNavigate();
@@ -15,19 +16,24 @@ export default function CartViewComp() {
     handleSaveForLater,
     handleMoveToCart,
   } = useCart();
-  const handleNavigateToCheckout = () => {
-    handleClose();
-    navigate("/checkout");
-  };  
-  const [couponCode, setCouponCode] = useState("");
 
-  const subtotal = cartItems.reduce(
-    (acc, item) => acc + (item.price || item.numericPrice || 0) * (item.qty || 1),
-    0
-  );
-  const discount = cartItems.length > 0 ? 60.0 : 0.0;
-  const tax = cartItems.length > 0 ? 14.0 : 0.0;
-  const total = Math.max(0, subtotal - discount + tax);
+  const coupon = useCoupon();
+  const [couponCode, setCouponCode] = useState(coupon.code);
+  const [couponMessage, setCouponMessage] = useState(null); // { ok, text }
+
+  const handleApplyCoupon = (e) => {
+    e.preventDefault();
+    const result = coupon.apply(couponCode);
+    setCouponMessage({ ok: result.ok, text: result.message });
+  };
+
+  const handleRemoveCoupon = () => {
+    coupon.remove();
+    setCouponCode("");
+    setCouponMessage(null);
+  };
+
+  const { subtotal, discount, tax, total } = calculateTotals(cartItems, coupon.code);
 
   return (
     <div style={{ backgroundColor: "#f7fafc", minHeight: "100vh", padding: "2rem 0" }}>
@@ -121,7 +127,7 @@ export default function CartViewComp() {
                         style={{ minWidth: "110px" }}
                       >
                         <span className="fw-semibold mb-2" style={{ color: "#1c1c1c", fontSize: "1rem" }}>
-                          ${Number(item.price || item.numericPrice || 0).toFixed(2)}
+                          {formatMoney(unitPrice(item))}
                         </span>
 
                         <Form.Select
@@ -252,46 +258,73 @@ export default function CartViewComp() {
               <div className="text-muted mb-2" style={{ fontSize: "0.88rem", fontWeight: "500" }}>
                 Have a coupon?
               </div>
-              <div className="d-flex">
-                <Form.Control
-                  type="text"
-                  placeholder="Add coupon"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  style={{
-                    borderTopRightRadius: 0,
-                    borderBottomRightRadius: 0,
-                    borderColor: "#e5e7eb",
-                    fontSize: "0.88rem",
-                  }}
-                />
-                <Button
-                  variant="outline-primary"
-                  className="fw-semibold px-3"
-                  style={{
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    borderColor: "#e5e7eb",
-                    fontSize: "0.88rem",
-                  }}
+              <Form onSubmit={handleApplyCoupon}>
+                <div className="d-flex">
+                  <Form.Control
+                    type="text"
+                    placeholder="Add coupon"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value);
+                      setCouponMessage(null);
+                    }}
+                    style={{
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                      borderColor: "#e5e7eb",
+                      fontSize: "0.88rem",
+                    }}
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline-primary"
+                    className="fw-semibold px-3"
+                    style={{
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderColor: "#e5e7eb",
+                      fontSize: "0.88rem",
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </Form>
+
+              {couponMessage && (
+                <div
+                  className={`mt-2 ${couponMessage.ok ? "text-success" : "text-danger"}`}
+                  style={{ fontSize: "0.82rem" }}
+                  role="status"
                 >
-                  Apply
+                  {couponMessage.text}
+                </div>
+              )}
+              {coupon.code && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 mt-1 text-danger text-start"
+                  style={{ fontSize: "0.82rem" }}
+                  onClick={handleRemoveCoupon}
+                >
+                  Remove coupon
                 </Button>
-              </div>
+              )}
             </Card>
 
             <Card className="border-0 shadow-sm p-3" style={{ borderRadius: "8px" }}>
               <div className="d-flex justify-content-between mb-2 text-muted" style={{ fontSize: "0.9rem" }}>
                 <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{formatMoney(subtotal)}</span>
               </div>
               <div className="d-flex justify-content-between mb-2 text-danger" style={{ fontSize: "0.9rem" }}>
                 <span>Discount:</span>
-                <span>- ${discount.toFixed(2)}</span>
+                <span>- {formatMoney(discount)}</span>
               </div>
               <div className="d-flex justify-content-between mb-3 text-success" style={{ fontSize: "0.9rem" }}>
                 <span>Tax:</span>
-                <span>+ ${tax.toFixed(2)}</span>
+                <span>+ {formatMoney(tax)}</span>
               </div>
               <hr className="my-2" style={{ borderColor: "#e5e7eb" }} />
               <div
@@ -299,7 +332,7 @@ export default function CartViewComp() {
                 style={{ fontSize: "1.1rem", color: "#1c1c1c" }}
               >
                 <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatMoney(total)}</span>
               </div>
 
               <Button
@@ -310,8 +343,8 @@ export default function CartViewComp() {
                   fontSize: "1rem",
                 }}
                 disabled={cartItems.length === 0}
-                link
-                onClick={handleNavigateToCheckout}
+                as={Link}
+                to="/checkout"
               >
                 Checkout
               </Button>
@@ -342,7 +375,7 @@ export default function CartViewComp() {
                       />
                     </div>
                     <h6 className="fw-bold mb-1" style={{ fontSize: "0.95rem", color: "#1c1c1c" }}>
-                      {typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : (item.price || `$${item.numericPrice}`)}
+                      {formatMoney(unitPrice(item))}
                     </h6>
                     <p className="text-muted mb-3 text-truncate" style={{ fontSize: "0.85rem", lineHeight: "1.3" }}>
                       {item.title}

@@ -1,18 +1,57 @@
+import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
+import { apiGet, getImage, toList } from '../Config/api.js';
+
+const RELATED_COUNT = 4;
 
 export default function RelatedProdDisc({ relatedProducts = [] }) {
     const navigate = useNavigate();
+    const { productId } = useParams();
+    const [apiProducts, setApiProducts] = useState([]);
 
-    // Fallback static products if no dynamic API list is passed
-    const defaultProducts = [
-        { id: 101, title: 'Xiaomi Redmi Note 11 Pro', price: 199.00, thumbnail: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=500&auto=format&fit=crop&q=60' },
-        { id: 102, title: 'Smart Watch Series 7 GPS', price: 299.00, thumbnail: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60' },
-        { id: 103, title: 'Headphones Wireless Noise Cancelling', price: 89.50, thumbnail: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60' },
-        { id: 104, title: 'Leather Casual Sneakers Sports', price: 55.00, thumbnail: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60' },
-    ];
+    // Tamkeen API: products of the same category as the current product
+    // (falls back to other products if the category has none)
+    useEffect(() => {
+        if (relatedProducts.length > 0 || !productId) return undefined;
 
-    const displayProducts = relatedProducts.length > 0 ? relatedProducts : defaultProducts;
+        let cancelled = false;
+
+        async function fetchRelated() {
+            try {
+                const json = await apiGet(`/product/${productId}`);
+                const current = json?.data?.product ?? json?.data ?? json;
+                const categoryId = current?.category_id ?? current?.category?.id;
+
+                let list = [];
+                if (categoryId) {
+                    list = toList(await apiGet('/product', { category_id: categoryId })).filter(
+                        (p) => String(p.id) !== String(productId)
+                    );
+                }
+                if (list.length === 0) {
+                    list = toList(await apiGet('/product')).filter(
+                        (p) => String(p.id) !== String(productId)
+                    );
+                }
+
+                if (!cancelled) setApiProducts(list.slice(0, RELATED_COUNT));
+            } catch (error) {
+                console.error("Error loading related products:", error);
+                if (!cancelled) setApiProducts([]);
+            }
+        }
+
+        fetchRelated();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [productId, relatedProducts.length]);
+
+    const displayProducts = relatedProducts.length > 0 ? relatedProducts : apiProducts;
+
+    if (displayProducts.length === 0) return null;
 
     return (
         <Container className="my-5">
@@ -30,14 +69,14 @@ export default function RelatedProdDisc({ relatedProducts = [] }) {
                                 style={{ height: '160px' }}
                             >
                                 <img
-                                    src={relItem.thumbnail || relItem.img}
-                                    alt={relItem.title}
+                                    src={relItem.thumbnail || getImage(relItem)}
+                                    alt={relItem.title ?? relItem.name}
                                     style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                                 />
                             </div>
                             <Card.Body className="p-2">
                                 <div className="fw-bold text-dark text-truncate" style={{ fontSize: '14px' }}>
-                                    {relItem.title}
+                                    {relItem.title ?? relItem.name}
                                 </div>
                                 <div className="text-danger fw-bold mt-1">
                                     ${relItem.price}

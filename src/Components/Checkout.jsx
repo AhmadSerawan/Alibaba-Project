@@ -5,6 +5,14 @@ import { ArrowClockwise } from "react-bootstrap-icons";
 import { useCart } from "../Contexts/CartContext";
 import syriatel from "../assets/imgs/syriatel.jpg";
 import NavBarComp from "./NavBarComp";
+import {
+  calculateTotals,
+  formatMoney,
+  itemQty,
+  unitPrice,
+  useCoupon,
+} from "../Services/pricing.js";
+
 const PaymentOption = ({ id, label, selected, onSelect, icon }) => (
   <button
     type="button"
@@ -49,7 +57,7 @@ const OrderItem = ({ title, subtitle, qty, price, img }) => (
     <div className="checkout-product-pricing">
       <span className="checkout-quantity">{qty}</span>
       <span className="checkout-item-price">
-        {(Number(price) * Number(qty)).toFixed(0)} AED
+        {formatMoney(Number(price) * Number(qty))}
       </span>
     </div>
   </div>
@@ -117,36 +125,35 @@ const fallbackItems = [1, 2, 3].map((id) => ({
   img: WATCH_IMG,
 }));
 
-const formatMoney = (value) => (value === 0 ? "0" : value.toFixed(3));
-
 const Checkout = () => {
   const navigate = useNavigate();
   const { cartItems } = useCart();
 
+  const coupon = useCoupon();
   const [selectedMethod, setSelectedMethod] = useState("cash");
-  const [discountCode, setDiscountCode] = useState("5601");
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountCode, setDiscountCode] = useState(coupon.code);
   const [discountMessage, setDiscountMessage] = useState("");
   const [isPaidSuccess, setIsPaidSuccess] = useState(false);
 
   const itemsToDisplay =
     cartItems && cartItems.length > 0 ? cartItems : fallbackItems;
 
-  const subtotal = itemsToDisplay.reduce(
-    (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0),
-    0
+  // Same calculation as the cart page (see pricing.js)
+  const { subtotal, discount, tax, total: netTotal } = calculateTotals(
+    itemsToDisplay,
+    coupon.code
   );
-  const tax = 4;
-  const netTotal = subtotal - discountAmount + tax;
 
   const handleCheckDiscount = (event) => {
     event.preventDefault();
-    if (discountCode.trim() === "5601") {
-      setDiscountAmount(0);
-      setDiscountMessage("Discount code applied.");
-    } else {
-      setDiscountMessage("Invalid discount code.");
-    }
+    const result = coupon.apply(discountCode);
+    setDiscountMessage(result.message);
+  };
+
+  // A coupon is used once: clear it when the paid-order dialog is closed
+  const handleCloseSuccess = () => {
+    setIsPaidSuccess(false);
+    coupon.remove();
   };
 
   return (
@@ -195,6 +202,7 @@ const Checkout = () => {
                     id="discount-code"
                     type="text"
                     value={discountCode}
+                    placeholder="Add coupon"
                     onChange={(event) => {
                       setDiscountCode(event.target.value);
                       setDiscountMessage("");
@@ -212,16 +220,6 @@ const Checkout = () => {
                   </div>
                 )}
               </Form>
-
-              {isPaidSuccess && (
-                <Button
-                  variant="outline-light"
-                  className="checkout-view-orders"
-                  onClick={() => navigate("/orders")}
-                >
-                  View ordered Items
-                </Button>
-              )}
             </Container>
           </Col>
 
@@ -233,9 +231,9 @@ const Checkout = () => {
                     key={item.id ?? index}
                     title={item.title}
                     subtitle={item.subtitle}
-                    qty={item.qty}
-                    price={item.price}
-                    img={item.img}
+                    qty={itemQty(item)}
+                    price={unitPrice(item)}
+                    img={item.img || item.image}
                   />
                 ))}
               </div>
@@ -243,19 +241,19 @@ const Checkout = () => {
               <div className="checkout-totals">
                 <div className="checkout-total-row">
                   <span>Total</span>
-                  <span>{subtotal.toFixed(3)}</span>
+                  <span>{formatMoney(subtotal)}</span>
                 </div>
                 <div className="checkout-total-row">
                   <span>Discount</span>
-                  <span>{formatMoney(discountAmount)}</span>
+                  <span>- {formatMoney(discount)}</span>
                 </div>
                 <div className="checkout-total-row">
                   <span>Tax</span>
-                  <span>{tax.toFixed(3)}</span>
+                  <span>+ {formatMoney(tax)}</span>
                 </div>
                 <div className="checkout-net-total">
                   <span>Net Total</span>
-                  <span>{netTotal.toFixed(3)}</span>
+                  <span>{formatMoney(netTotal)}</span>
                 </div>
               </div>
 
@@ -271,10 +269,7 @@ const Checkout = () => {
         </Row>
       </main>
 
-      <SuccessModal
-        show={isPaidSuccess}
-        onClose={() => setIsPaidSuccess(false)}
-      />
+      <SuccessModal show={isPaidSuccess} onClose={handleCloseSuccess} />
     </>
   );
 };

@@ -12,7 +12,7 @@ import {
 } from "../Config/api.js";
 import {
   ConfirmModal,
-  ImagePicker,
+  MultiImagePicker,
   LoadState,
   Notice,
   formatPrice,
@@ -27,6 +27,16 @@ const categoryNameOf = (product, categories) =>
   categories.find((c) => String(c.id) === String(product.category_id))?.name ??
   "—";
 
+// All current image URLs of a product (main image + extra images)
+const existingImagesOf = (product) => {
+  const extra = Array.isArray(product?.images)
+    ? product.images.map((img) =>
+        getImage(typeof img === "string" ? { image: img } : img, null)
+      )
+    : [];
+  return [...new Set([getImage(product, null), ...extra].filter(Boolean))];
+};
+
 /* ---------- Add / edit modal ---------- */
 
 const ProductFormModal = ({ show, product, categories, onClose, onSaved }) => {
@@ -37,7 +47,7 @@ const ProductFormModal = ({ show, product, categories, onClose, onSaved }) => {
     price: product?.price ?? "",
     category_id: product?.category_id ?? product?.category?.id ?? "",
   });
-  const [image, setImage] = useState(null);
+  const [images, setImages] = useState([]); // File[]
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -64,12 +74,16 @@ const ProductFormModal = ({ show, product, categories, onClose, onSaved }) => {
     };
 
     try {
-      if (isEdit && !image) {
+      if (isEdit && images.length === 0) {
         await apiPut(`/product/${product.id}`, fields);
       } else {
         const fd = new FormData();
         Object.entries(fields).forEach(([key, value]) => fd.append(key, value));
-        if (image) fd.append("image", image);
+        if (images.length > 0) {
+          // First image = main image (`image`), all images are also sent as `images[]`
+          fd.append("image", images[0]);
+          images.forEach((file) => fd.append("images[]", file));
+        }
 
         if (isEdit) {
           // New image: multipart with method spoofing (Laravel)
@@ -151,11 +165,11 @@ const ProductFormModal = ({ show, product, categories, onClose, onSaved }) => {
           </div>
 
           <Form.Group controlId="productImage">
-            <Form.Label>Image</Form.Label>
-            <ImagePicker
-              current={isEdit ? getImage(product, null) : null}
-              file={image}
-              onChange={setImage}
+            <Form.Label>Images</Form.Label>
+            <MultiImagePicker
+              existing={isEdit ? existingImagesOf(product) : []}
+              files={images}
+              onChange={setImages}
               disabled={saving}
             />
           </Form.Group>

@@ -16,17 +16,22 @@ import {
   Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { apiGet, apiGetAll, getImage, toList } from "../Config/api.js";
+
+const nameOf = (item) => item?.name ?? item?.title ?? "";
 
 export default function NavBarComp() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const currentSearch = searchParams.get("search") || "";
-  const currentCategory = searchParams.get("category") || "All category";
+  // The `category` URL param holds the Tamkeen category id ("" = all categories)
+  const currentCategoryId = searchParams.get("category") || "";
 
   const [searchQuery, setSearchQuery] = useState(currentSearch);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
 
   // Live Suggestion State
   const [suggestions, setSuggestions] = useState([]);
@@ -35,54 +40,69 @@ export default function NavBarComp() {
 
   const searchContainerRef = useRef(null);
 
+  const currentCategoryName =
+    nameOf(categories.find((c) => String(c.id) === currentCategoryId)) ||
+    "All category";
+
+  const categoryNameOfProduct = (product) =>
+    product.category?.name ??
+    nameOf(categories.find((c) => String(c.id) === String(product.category_id)));
+
   useEffect(() => {
     setSearchQuery(currentSearch);
   }, [currentSearch]);
 
-  // Fetch categories
+  // Fetch categories (Tamkeen API)
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchCategories() {
       try {
         setLoadingCategories(true);
-        const res = await fetch("https://dummyjson.com/products/category-list");
-        if (!res.ok) throw new Error("Failed to load categories");
-        const data = await res.json();
-        setCategories(data);
+        setCategoriesError(false);
+        const data = await apiGetAll("/category");
+        if (!cancelled) setCategories(data);
       } catch (err) {
         console.error("Error fetching categories:", err);
-        setCategories([
-          "smartphones",
-          "laptops",
-          "fragrances",
-          "skincare",
-          "groceries",
-          "home-decoration",
-        ]);
+        if (!cancelled) {
+          setCategories([]);
+          setCategoriesError(true);
+        }
       } finally {
-        setLoadingCategories(false);
+        if (!cancelled) setLoadingCategories(false);
       }
     }
     fetchCategories();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Fetch live product suggestions when typing
+  // Fetch live product suggestions when typing (Tamkeen API)
   useEffect(() => {
+    let cancelled = false;
+
     const timer = setTimeout(async () => {
       if (searchQuery.trim().length > 1) {
         setLoadingSuggestions(true);
         try {
-          const res = await fetch(
-            `https://dummyjson.com/products/search?q=${encodeURIComponent(
-              searchQuery
-            )}&limit=6`
-          );
-          const data = await res.json();
-          setSuggestions(data.products || []);
-          setShowSuggestions(true);
+          const json = await apiGet("/product", {
+            search: searchQuery.trim(),
+            category_id: currentCategoryId || undefined,
+          });
+          if (!cancelled) {
+            setSuggestions(toList(json).slice(0, 6));
+            setShowSuggestions(true);
+          }
         } catch (err) {
           console.error("Error fetching suggestions:", err);
+          if (!cancelled) {
+            setSuggestions([]);
+            setShowSuggestions(true);
+          }
         } finally {
-          setLoadingSuggestions(false);
+          if (!cancelled) setLoadingSuggestions(false);
         }
       } else {
         setSuggestions([]);
@@ -90,8 +110,11 @@ export default function NavBarComp() {
       }
     }, 250); // Debounce delay
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, currentCategoryId]);
 
   // Hide suggestions dropdown when clicking outside
   useEffect(() => {
@@ -131,10 +154,11 @@ export default function NavBarComp() {
     navigate(`/product/${product.id}`);
   };
 
-  const handleCategorySelect = (cat) => {
+  // categoryId: Tamkeen category id, or "" for all categories
+  const handleCategorySelect = (categoryId) => {
     const newParams = new URLSearchParams(searchParams);
-    if (cat && cat !== "All category" && cat !== "All") {
-      newParams.set("category", cat);
+    if (categoryId) {
+      newParams.set("category", String(categoryId));
     } else {
       newParams.delete("category");
     }
@@ -179,24 +203,27 @@ export default function NavBarComp() {
               />
 
               <NavDropdown
-                title={currentCategory.replace("-", " ")}
+                title={currentCategoryName}
                 id="navbarScrollingDropdown"
                 className="CatClass text-capitalize"
               >
-                <NavDropdown.Item onClick={() => handleCategorySelect("All category")}>
+                <NavDropdown.Item onClick={() => handleCategorySelect("")}>
                   All category
                 </NavDropdown.Item>
                 <NavDropdown.Divider />
                 {loadingCategories ? (
                   <NavDropdown.Item disabled>Loading categories...</NavDropdown.Item>
+                ) : categoriesError ? (
+                  <NavDropdown.Item disabled>Could not load categories</NavDropdown.Item>
                 ) : (
                   categories.map((cat) => (
                     <NavDropdown.Item
-                      key={cat}
+                      key={cat.id}
                       className="text-capitalize"
-                      onClick={() => handleCategorySelect(cat)}
+                      active={String(cat.id) === currentCategoryId}
+                      onClick={() => handleCategorySelect(cat.id)}
                     >
-                      {cat.replace("-", " ")}
+                      {nameOf(cat)}
                     </NavDropdown.Item>
                   ))
                 )}
@@ -206,7 +233,7 @@ export default function NavBarComp() {
                 type="button"
                 variant="outline-success"
                 className="searchButton"
-                onClick={() => handleCategorySelect(currentCategory)}
+                onClick={() => handleCategorySelect(currentCategoryId)}
               >
                 Search
               </Button>
@@ -240,8 +267,8 @@ export default function NavBarComp() {
                       style={{ cursor: "pointer" }}
                     >
                       <img
-                        src={item.thumbnail}
-                        alt={item.title}
+                        src={getImage(item)}
+                        alt={nameOf(item)}
                         style={{
                           width: "40px",
                           height: "40px",
@@ -254,11 +281,19 @@ export default function NavBarComp() {
                           className="fw-semibold text-truncate text-dark"
                           style={{ fontSize: "14px" }}
                         >
-                          {item.title}
+                          {nameOf(item)}
                         </div>
                         <span className="text-muted" style={{ fontSize: "12px" }}>
-                          ${item.price} •{" "}
-                          <span className="text-capitalize">{item.category}</span>
+                          ${item.price}
+                          {categoryNameOfProduct(item) && (
+                            <>
+                              {" "}
+                              •{" "}
+                              <span className="text-capitalize">
+                                {categoryNameOfProduct(item)}
+                              </span>
+                            </>
+                          )}
                         </span>
                       </div>
                     </ListGroup.Item>
