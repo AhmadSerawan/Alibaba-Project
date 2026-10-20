@@ -46,7 +46,9 @@ export default function NavBarComp() {
 
   const categoryNameOfProduct = (product) =>
     product.category?.name ??
-    nameOf(categories.find((c) => String(c.id) === String(product.category_id)));
+    nameOf(
+      categories.find((c) => String(c.id) === String(product.category_id)),
+    );
 
   useEffect(() => {
     setSearchQuery(currentSearch);
@@ -172,8 +174,14 @@ export default function NavBarComp() {
 
   return (
     <Navbar expand="lg" className="NAV flex-column">
-      <Container style={{ height: "86px" }} className="d-flex align-items-center">
-        <Navbar.Brand onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+      <Container
+        style={{ height: "86px" }}
+        className="d-flex align-items-center"
+      >
+        <Navbar.Brand
+          onClick={() => navigate("/")}
+          style={{ cursor: "pointer" }}
+        >
           <img
             src={Logo}
             alt="Logo"
@@ -184,7 +192,7 @@ export default function NavBarComp() {
         <Navbar.Collapse id="navbarScroll">
           {/* Wrapper Search Container with Relative Position for Dropdown */}
           <div
-            className="wrapperSearch mx-auto style-position-relative"
+            className="wrapperSearch mx-auto "
             ref={searchContainerRef}
             style={{ position: "relative" }}
           >
@@ -199,7 +207,9 @@ export default function NavBarComp() {
                 aria-label="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
-                onFocus={() => searchQuery.trim().length > 1 && setShowSuggestions(true)}
+                onFocus={() =>
+                  searchQuery.trim().length > 1 && setShowSuggestions(true)
+                }
               />
 
               <NavDropdown
@@ -212,9 +222,13 @@ export default function NavBarComp() {
                 </NavDropdown.Item>
                 <NavDropdown.Divider />
                 {loadingCategories ? (
-                  <NavDropdown.Item disabled>Loading categories...</NavDropdown.Item>
+                  <NavDropdown.Item disabled>
+                    Loading categories...
+                  </NavDropdown.Item>
                 ) : categoriesError ? (
-                  <NavDropdown.Item disabled>Could not load categories</NavDropdown.Item>
+                  <NavDropdown.Item disabled>
+                    Could not load categories
+                  </NavDropdown.Item>
                 ) : (
                   categories.map((cat) => (
                     <NavDropdown.Item
@@ -240,74 +254,118 @@ export default function NavBarComp() {
             </Form>
 
             {/* REAL-TIME LIVE SEARCH SUGGESTIONS DROPDOWN */}
+            {/* REAL-TIME LIVE SEARCH SUGGESTIONS DROPDOWN */}
             {showSuggestions && (
-              <ListGroup
-                className="shadow-lg position-absolute w-100 bg-white"
-                style={{
-                  top: "105%",
-                  left: 0,
-                  zIndex: 1050,
-                  maxHeight: "360px",
-                  overflowY: "auto",
-                  borderRadius: "8px",
-                  border: "1px solid #e0e0e0",
-                }}
-              >
-                {loadingSuggestions ? (
-                  <ListGroup.Item className="text-muted p-3">
-                    Searching products...
-                  </ListGroup.Item>
-                ) : suggestions.length > 0 ? (
-                  suggestions.map((item) => (
-                    <ListGroup.Item
-                      key={item.id}
-                      action
-                      onClick={() => handleSelectSuggestion(item)}
-                      className="d-flex align-items-center gap-3 py-2 px-3 border-bottom"
-                      style={{ cursor: "pointer" }}
-                    >
-                      <img
-                        src={getImage(item)}
-                        alt={nameOf(item)}
-                        style={{
-                          width: "40px",
-                          height: "40px",
-                          objectFit: "cover",
-                          borderRadius: "4px",
-                        }}
-                      />
-                      <div className="flex-grow-1 overflow-hidden">
-                        <div
-                          className="fw-semibold text-truncate text-dark"
-                          style={{ fontSize: "14px" }}
-                        >
-                          {nameOf(item)}
+              <>
+                <style>{`
+      .wrapperSearch .sugg-box {
+        position: absolute !important;
+        top: calc(100% + 6px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-height: 400px;
+        overflow-y: auto;
+        background: #fff !important;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        z-index: 1050;
+        text-align: left;
+      }
+      .wrapperSearch .sugg-item {
+        display: flex !important;
+        align-items: center;
+        gap: 12px;
+        width: 100% !important;
+        padding: 10px 14px;
+        background: #fff !important;
+        color: #212529 !important;
+        border: 0;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        text-align: left;
+      }
+      .wrapperSearch .sugg-item:last-child { border-bottom: 0; }
+      .wrapperSearch .sugg-item:hover { background: #f5f5f5 !important; }
+      .wrapperSearch .sugg-img {
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+      .wrapperSearch .sugg-text { flex: 1; min-width: 0; }
+      .wrapperSearch .sugg-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #212529 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wrapperSearch .sugg-meta {
+        font-size: 12px;
+        color: #6c757d !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .wrapperSearch .sugg-empty {
+        padding: 14px;
+        color: #6c757d;
+        background: #fff;
+      }
+    `}</style>
+
+                <div className="sugg-box">
+                  {loadingSuggestions ? (
+                    <div className="sugg-empty">Searching products...</div>
+                  ) : suggestions.length > 0 ? (
+                    suggestions.map((item) => (
+                      <button
+                        type="button"
+                        key={item.id}
+                        className="sugg-item"
+                        onClick={() => handleSelectSuggestion(item)}
+                      >
+                        <img
+                          className="sugg-img"
+                          src={getImage(item)}
+                          alt={nameOf(item)}
+                        />
+                        <div className="sugg-text">
+                          <div className="sugg-name">{nameOf(item)}</div>
+                          <div className="sugg-meta">
+                            ${item.price}
+                            {categoryNameOfProduct(item) && (
+                              <>
+                                {" • "}
+                                <span className="text-capitalize">
+                                  {categoryNameOfProduct(item)}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-muted" style={{ fontSize: "12px" }}>
-                          ${item.price}
-                          {categoryNameOfProduct(item) && (
-                            <>
-                              {" "}
-                              •{" "}
-                              <span className="text-capitalize">
-                                {categoryNameOfProduct(item)}
-                              </span>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    </ListGroup.Item>
-                  ))
-                ) : (
-                  <ListGroup.Item className="text-muted p-3">
-                    No matching products found.
-                  </ListGroup.Item>
-                )}
-              </ListGroup>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="sugg-empty">
+                      No matching products found.
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 
-          <Nav className="NavNav ms-auto my-2 my-lg-0" style={{ maxHeight: "100px" }} navbarScroll>
+          <Nav
+            className="NavNav ms-auto my-2 my-lg-0"
+            style={{ maxHeight: "100px" }}
+            navbarScroll
+          >
             <Nav.Link onClick={() => navigate("/profile")}>
               <div className="d-flex align-items-center flex-column">
                 <HugeiconsIcon icon={UserCircleIcon} />
@@ -350,13 +408,22 @@ export default function NavBarComp() {
               </button>
 
               <Nav className="me-auto NavCatNav">
-                <Nav.Link onClick={() => navigate("/catpage")} style={{ color: "#1c1c1c", fontWeight: "500" }}>
+                <Nav.Link
+                  onClick={() => navigate("/catpage")}
+                  style={{ color: "#1c1c1c", fontWeight: "500" }}
+                >
                   Hot offers
                 </Nav.Link>
-                <Nav.Link onClick={() => navigate("/catpage")} style={{ color: "#1c1c1c", fontWeight: "500" }}>
+                <Nav.Link
+                  onClick={() => navigate("/catpage")}
+                  style={{ color: "#1c1c1c", fontWeight: "500" }}
+                >
                   Gift boxes
                 </Nav.Link>
-                <Nav.Link onClick={() => navigate("/about")} style={{ color: "#1c1c1c", fontWeight: "500" }}>
+                <Nav.Link
+                  onClick={() => navigate("/about")}
+                  style={{ color: "#1c1c1c", fontWeight: "500" }}
+                >
                   About Us
                 </Nav.Link>
               </Nav>
