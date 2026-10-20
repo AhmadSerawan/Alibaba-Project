@@ -15,7 +15,10 @@ export default function CartViewComp() {
     handleSaveForLater,
     handleMoveToCart,
   } = useCart();
-
+  const handleNavigateToCheckout = () => {
+    handleClose();
+    navigate("/checkout");
+  };  
   const [couponCode, setCouponCode] = useState("");
 
   const subtotal = cartItems.reduce(
@@ -307,6 +310,8 @@ export default function CartViewComp() {
                   fontSize: "1rem",
                 }}
                 disabled={cartItems.length === 0}
+                link
+                onClick={handleNavigateToCheckout}
               >
                 Checkout
               </Button>

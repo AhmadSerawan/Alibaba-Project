@@ -21,7 +21,10 @@
 
     const handleClose = () => setShowCart(false);
     const handleShow = () => setShowCart(true);
-
+    const handleNavigateToCheckout = () => {
+      handleClose();
+      navigate("/checkout");
+    };
     const calculateTotal = () =>
       cartItems
         .reduce((sum, item) => sum + item.price * item.qty, 0)
@@ -165,7 +168,7 @@
                     <Button
                       className="w-100 py-2 fw-semibold"
                       style={{ backgroundColor: "#f0345d", border: "none" }}
-                      
+                      onClick={handleNavigateToCheckout}
                     >
                       Checkout
                     </Button>

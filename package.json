@@ -12,9 +12,10 @@
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react": "^1.1.10",
+    "axios": "^1.20.0",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
-    "lucide-react": "^1.47.0",
+    "lucide-react": "^1.59.0",
     "react": "^19.2.8",
     "react-bootstrap": "^2.10.10",
     "react-bootstrap-icons": "^1.11.6",
